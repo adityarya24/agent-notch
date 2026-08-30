@@ -12,9 +12,7 @@
   <img src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square" alt="License">
 </p>
 
-<p align="center">
-  <img src="docs/media/notch-handoff.gif" alt="Agent Notch: live quota rings, a glow on the working agent, and a one-shot flash when a job hands off" width="640">
-</p>
+https://github.com/user-attachments/assets/1458bc99-1066-4766-8a93-5b83b652fc57
 
 <p align="center">
   <em>Live quota rings. The glow marks whichever agent is actually working, and the flash is a job handing off when one hits its limit.<br>
