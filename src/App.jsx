@@ -141,13 +141,13 @@ export default function App() {
 
       {/* Side Notch Dock Body with Smooth Scrolling & Settings Gear */}
       <div
-        className="relative bg-[#09090b]/98 backdrop-blur-2xl border-l-2 border-t-2 border-b-2 border-[#27272a] shadow-2xl shadow-black/95 py-3 px-2 rounded-l-[26px] z-40 transition-all duration-200 hover:border-[#34d399]/60 max-h-[440px] flex flex-col items-center justify-between gap-2"
+        className="relative bg-[#09090b]/98 backdrop-blur-2xl border-l-2 border-t-2 border-b-2 border-[#27272a] shadow-2xl shadow-black/95 py-3 px-2 rounded-l-[26px] z-40 transition-all duration-200 hover:border-[#34d399]/60 max-h-[560px] flex flex-col items-center justify-between gap-2"
         onMouseLeave={() => setHoveredModelId(null)}
       >
         {/* Scrollable Model Rings List */}
         <div
           ref={scrollRef}
-          className="flex flex-col items-center gap-3 overflow-y-auto max-h-[360px] pr-0.5 scrollbar-none"
+          className="flex flex-col items-center gap-3 overflow-y-auto max-h-[480px] pr-0.5 scrollbar-none"
           style={{ scrollbarWidth: 'none', msOverflowStyle: 'none' }}
         >
           {data.models && data.models.length > 0 ? (

@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 /**
- * Plant a short-lived glow fixture, capture HUD frames, build README media.
+ * Record a short HUD clip: load rings, plant a glow/handoff fixture, capture frames.
  * Does not burn provider quota.
  */
 const fs = require('fs');
@@ -14,7 +14,8 @@ const outDir = path.join(root, 'docs', 'media');
 const cli = path.join(root, 'bin', 'cli.js');
 const mainJs = path.join(root, 'electron', 'main.js');
 const python = process.env.PYTHON || 'python';
-const frames = 12;
+const frames = 36;
+const goFile = path.join(rawDir, 'go.json');
 const jobId = `notch-smoke-media-${Date.now()}`;
 const jobDir = path.join(os.homedir(), '.mindsync', 'dispatch', 'jobs', jobId);
 
@@ -57,45 +58,52 @@ function waitDone(timeoutMs) {
   const t0 = Date.now();
   while (Date.now() - t0 < timeoutMs) {
     if (fs.existsSync(done)) return true;
-    sleep(250);
+    sleep(200);
   }
   return fs.existsSync(done);
+}
+
+function killNotchElectrons() {
+  spawnSync(process.execPath, [cli, 'stop'], { stdio: 'inherit' });
+  if (process.platform === 'win32') {
+    spawnSync('powershell.exe', [
+      '-NoProfile',
+      '-Command',
+      "Get-CimInstance Win32_Process -Filter \"Name = 'electron.exe'\" | Where-Object { $_.CommandLine -like '*agent-notch*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"
+    ], { stdio: 'inherit' });
+  }
 }
 
 fs.rmSync(rawDir, { recursive: true, force: true });
 fs.mkdirSync(rawDir, { recursive: true });
 fs.mkdirSync(outDir, { recursive: true });
-
-spawnSync(process.execPath, [cli, 'stop'], { stdio: 'inherit' });
-if (process.platform === 'win32') {
-  spawnSync('powershell.exe', [
-    '-NoProfile',
-    '-Command',
-    "Get-CimInstance Win32_Process -Filter \"Name = 'electron.exe'\" | Where-Object { $_.CommandLine -like '*agent-notch*' } | ForEach-Object { Stop-Process -Id $_.ProcessId -Force -ErrorAction SilentlyContinue }"
-  ], { stdio: 'inherit' });
-}
-writeMeta();
+killNotchElectrons();
 
 const electronBin = resolveElectron();
 console.log('electron', electronBin);
-console.log('capture dir', rawDir);
 
+writeMeta();
 const child = spawn(electronBin, [mainJs], {
   cwd: root,
   env: {
     ...process.env,
     NOTCH_CAPTURE: rawDir,
+    NOTCH_CAPTURE_WAIT: goFile,
     NOTCH_CAPTURE_FRAMES: String(frames),
-    NOTCH_CAPTURE_MS: '220',
+    NOTCH_CAPTURE_MS: '110',
     NOTCH_CAPTURE_QUIT: '1'
   },
   stdio: 'inherit'
 });
 
-const ok = waitDone(25000);
-if (!ok) {
+console.log('waiting for HUD to paint...');
+sleep(1800);
+fs.writeFileSync(goFile, `${JSON.stringify({ at: new Date().toISOString() })}\n`);
+console.log('recording glow + handoff...');
+
+if (!waitDone(25000)) {
   try { child.kill(); } catch (e) {}
-  spawnSync(process.execPath, [cli, 'stop'], { stdio: 'ignore' });
+  killNotchElectrons();
   clearJob();
   console.error('capture timed out — no done.json');
   if (fs.existsSync(rawDir)) console.error('raw', fs.readdirSync(rawDir));
@@ -106,5 +114,5 @@ const stitch = path.join(__dirname, 'stitch-hud-media.py');
 const stitched = spawnSync(python, [stitch, rawDir, outDir], { stdio: 'inherit' });
 clearJob();
 try { child.kill(); } catch (e) {}
-spawnSync(process.execPath, [cli, 'stop'], { stdio: 'ignore' });
+killNotchElectrons();
 process.exit(stitched.status || 0);

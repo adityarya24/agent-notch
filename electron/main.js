@@ -32,8 +32,8 @@ function clearPid() {
 }
 
 const OVERLAY = {
-  dock: { width: 360, height: 500 },
-  settings: { width: 440, height: 520 }
+  dock: { width: 360, height: 620 },
+  settings: { width: 440, height: 640 }
 };
 
 function activityFingerprint(activity) {
@@ -332,11 +332,17 @@ async function runCaptureIfRequested() {
   if (!dir) return;
   fs.mkdirSync(dir, { recursive: true });
   const frames = Math.max(1, Number(process.env.NOTCH_CAPTURE_FRAMES || 1) || 1);
-  const interval = Math.max(80, Number(process.env.NOTCH_CAPTURE_MS || 220) || 220);
-  await new Promise((resolve) => setTimeout(resolve, 2200));
-  const display = screen.getPrimaryDisplay();
-  const scale = display.scaleFactor || 1;
-  const { width, height } = display.size;
+  const interval = Math.max(50, Number(process.env.NOTCH_CAPTURE_MS || 120) || 120);
+  const waitFile = String(process.env.NOTCH_CAPTURE_WAIT || '').trim();
+  if (waitFile) {
+    const t0 = Date.now();
+    while (!fs.existsSync(waitFile) && Date.now() - t0 < 20000) {
+      await new Promise((resolve) => setTimeout(resolve, 80));
+    }
+  } else {
+    await new Promise((resolve) => setTimeout(resolve, 2200));
+  }
+  await new Promise((resolve) => setTimeout(resolve, 400));
   const withTimeout = (promise, ms) => Promise.race([
     promise,
     new Promise((_, reject) => setTimeout(() => reject(new Error('capture timeout')), ms))
@@ -346,25 +352,11 @@ async function runCaptureIfRequested() {
     const n = String(i).padStart(2, '0');
     try {
       if (mainWindow && !mainWindow.isDestroyed()) {
-        const page = await withTimeout(mainWindow.capturePage(), 2500);
+        const page = await withTimeout(mainWindow.capturePage(), 2000);
         fs.writeFileSync(path.join(dir, `page-${n}.png`), page.toPNG());
       }
     } catch (e) {
       try { fs.appendFileSync(path.join(__dirname, '..', 'electron_boot.log'), `[capture] page ${n} ${e.message}\n`); } catch (err) {}
-    }
-    try {
-      const sources = await withTimeout(desktopCapturer.getSources({
-        types: ['screen'],
-        thumbnailSize: {
-          width: Math.round(width * scale),
-          height: Math.round(height * scale)
-        }
-      }), 2500);
-      if (sources[0] && sources[0].thumbnail) {
-        fs.writeFileSync(path.join(dir, `desk-${n}.png`), sources[0].thumbnail.toPNG());
-      }
-    } catch (e) {
-      try { fs.appendFileSync(path.join(__dirname, '..', 'electron_boot.log'), `[capture] desk ${n} ${e.message}\n`); } catch (err) {}
     }
     if (i < frames - 1) {
       await new Promise((resolve) => setTimeout(resolve, interval));
