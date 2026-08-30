@@ -20,7 +20,9 @@ const logFile = runtimePath('electron_boot.log');
 const OVERLAY = {
   dock: { width: 360, height: 620 },
   settings: { width: 440, height: 640 },
-  collapsed: { width: 60, height: 36 }
+  // Collapsing tucks the full-size rail into the screen edge. Keeping the
+  // window footprint stable avoids a detached mini-window and visual jump.
+  collapsed: { width: 360, height: 620 }
 };
 
 function reduceMotionEnabled(cfg) {

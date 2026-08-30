@@ -3,7 +3,7 @@ import { CircularProgressRing } from './components/CircularProgressRing';
 import { ModelPopoverCard } from './components/ModelPopoverCard';
 import { SettingsModal } from './components/SettingsModal';
 import { ClaudeIcon, OpenAIClassicIcon, CursorIcon, GeminiIcon, OpenCodeIcon, GrokIcon, SparkIcon } from './components/Icons';
-import { ChevronLeft, ChevronRight, Settings } from 'lucide-react';
+import { Settings } from 'lucide-react';
 
 export default function App() {
   const [data, setData] = useState({
@@ -147,26 +147,9 @@ export default function App() {
     }
   };
 
-  if (isCollapsed) {
-    return (
-      <div className="w-full h-full flex items-center justify-end select-none font-sans overflow-hidden">
-        <button
-          data-hud
-          type="button"
-          onClick={() => setCollapsed(false)}
-          title="Expand Agent Notch"
-          aria-label="Expand Agent Notch"
-          className="w-[58px] h-8 rounded-l-full border-l-2 border-y-2 border-[#3f3f46] bg-[#09090b]/98 text-neutral-400 shadow-xl shadow-black/90 flex items-center justify-center transition-all duration-200 hover:border-emerald-400/70 hover:text-emerald-300"
-        >
-          <ChevronLeft className="w-3.5 h-3.5" />
-        </button>
-      </div>
-    );
-  }
-
   return (
     <div className={`w-full h-full flex items-center justify-end pr-0 select-none font-sans ${isSettingsOpen ? 'overflow-visible' : 'overflow-hidden'}`}>
-      <div data-hud className="flex items-center justify-end">
+      <div data-hud={isCollapsed ? undefined : true} className="flex items-center justify-end">
       {/* Popover / Settings Area on the Left */}
       <div className="mr-2 transition-all duration-200 z-50">
         {isSettingsOpen ? (
@@ -189,20 +172,36 @@ export default function App() {
 
       {/* Side Notch Dock Body with Smooth Scrolling & Settings Gear */}
       <div
-        className="relative bg-[#09090b]/98 backdrop-blur-2xl border-l-2 border-t-2 border-b-2 border-[#27272a] shadow-2xl shadow-black/95 py-3 px-2 rounded-l-[26px] z-40 transition-all duration-200 hover:border-[#34d399]/60 max-h-[560px] flex flex-col items-center justify-between gap-2"
+        className={`relative bg-[#09090b]/98 backdrop-blur-2xl border-l-2 border-t-2 border-b-2 shadow-2xl shadow-black/95 py-3 px-2 rounded-l-[26px] z-40 max-h-[560px] flex flex-col items-center justify-between gap-2 transition-[transform,border-color,opacity] ease-[cubic-bezier(0.22,1,0.36,1)] ${
+          isCollapsed
+            ? 'translate-x-[48px] border-[#3f3f46]/70 opacity-90'
+            : 'translate-x-0 border-[#27272a] hover:border-[#34d399]/60 opacity-100'
+        }`}
+        style={{ transitionDuration: reduceMotion ? '0ms' : '280ms' }}
         onMouseLeave={() => setHoveredModelId(null)}
       >
         <button
+          data-hud
           type="button"
-          onClick={() => setCollapsed(true)}
-          title="Collapse Agent Notch"
-          aria-label="Collapse Agent Notch"
-          className={`absolute -left-8 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full border border-[#3f3f46] bg-[#09090b] text-neutral-400 shadow-lg shadow-black/70 z-50 flex items-center justify-center transition-all duration-200 hover:border-emerald-400/70 hover:text-emerald-300 ${hoveredModel || isSettingsOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
+          onClick={() => setCollapsed(!isCollapsed)}
+          title={isCollapsed ? 'Reveal Agent Notch' : 'Tuck away Agent Notch'}
+          aria-label={isCollapsed ? 'Reveal Agent Notch' : 'Tuck away Agent Notch'}
+          aria-expanded={!isCollapsed}
+          className={`group/edge absolute -left-[19px] top-1/2 -translate-y-1/2 w-5 h-12 z-50 flex items-center justify-end focus:outline-none transition-opacity duration-200 ${hoveredModel || isSettingsOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
         >
-          <span className="absolute -right-1.5 w-1.5 h-px bg-[#3f3f46]" aria-hidden="true" />
-          <ChevronRight className="w-3.5 h-3.5" />
+          <span
+            aria-hidden="true"
+            className="relative w-[18px] h-10 rounded-l-[16px] border-l border-y border-[#52525b] bg-[#09090b] shadow-lg shadow-black/70 transition-[border-color,box-shadow] duration-200 group-hover/edge:border-emerald-400/75 group-hover/edge:shadow-emerald-950/40 group-focus-visible/edge:border-emerald-300"
+          >
+            <span className="absolute left-[7px] top-1/2 -translate-y-1/2 w-px h-3.5 rounded-full bg-neutral-500 transition-[height,background-color] duration-200 group-hover/edge:h-5 group-hover/edge:bg-emerald-300" />
+          </span>
         </button>
 
+        <div
+          aria-hidden={isCollapsed}
+          className={`w-full flex flex-col items-center justify-between gap-2 transition-[opacity,filter] ${isCollapsed ? 'pointer-events-none opacity-0 blur-[1px]' : 'opacity-100 blur-0'}`}
+          style={{ transitionDuration: reduceMotion ? '0ms' : '180ms' }}
+        >
         {/* Scrollable Model Rings List */}
         <div
           ref={scrollRef}
@@ -219,7 +218,7 @@ export default function App() {
                 key={m.id}
                 className={`relative flex flex-col items-center gap-0.5 group cursor-pointer ${isFrom && !reduceMotion ? 'opacity-40' : 'opacity-100'}`}
                 onMouseEnter={() => {
-                  if (!isSettingsOpen) setHoveredModelId(m.id);
+                  if (!isCollapsed && !isSettingsOpen) setHoveredModelId(m.id);
                 }}
               >
                 {(isWork || isTo) && (
@@ -273,6 +272,7 @@ export default function App() {
         )}
         <div className="pt-1.5 border-t border-[#27272a]/60 w-full flex justify-center">
           <button
+            tabIndex={isCollapsed ? -1 : 0}
             onClick={() => {
               setHoveredModelId(null);
               setIsSettingsOpen(!isSettingsOpen);
@@ -284,6 +284,7 @@ export default function App() {
           >
             <Settings className="w-3.5 h-3.5" />
           </button>
+        </div>
         </div>
       </div>
       </div>
