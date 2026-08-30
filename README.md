@@ -25,8 +25,9 @@ https://github.com/user-attachments/assets/1458bc99-1066-4766-8a93-5b83b652fc57
 
 **Agent Notch** is an ultra-lightweight, always-on-top ambient desktop HUD snapped to the right edge of your screen. It gives you instant, zero-friction visibility into live token quotas, session rate-limits, and weekly usage windows across all your AI coding tools — without opening browser dashboards or checking multiple terminals.
 
-- **Account-Level Quota Rings**: Real-time session and weekly usage percentages at a single glance.
+- **Account-Level Quota Rings**: Periodically refreshed session and plan-window usage percentages at a single glance.
 - **Strictly Grounded Quotas**: Never estimates or shows fake percentages. Unknown or unauthenticated accounts display as `—` or `login`.
+- **Honest Failure State**: A failed refresh can retain the last successful value for up to five minutes, clearly marked with `~` and a stale notice, before returning to unknown.
 - **Zero-Lag Click-Through**: Transparent overlay pixels automatically forward all mouse clicks, drags, and scrolls to background windows.
 - **100% Standalone & Local-First**: Works immediately out of the box using your local CLI credentials. Zero telemetry, zero external tracking servers.
 - **Custom Extensible**: Easily monitor custom CLI agents or scripts via stdout JSON commands or manual snapshots.
@@ -39,8 +40,8 @@ Agent Notch detects and tracks live usage for major coding agent ecosystems dire
 
 | Provider / Ring | Monitored Windows | Data Source & Detection |
 | :--- | :--- | :--- |
-| **OpenAI Codex** | 5h Session + Weekly | ChatGPT WHAM usage endpoint (`~/.codex/` session / cookies) |
-| **Claude Code** | Session + 5h Window | Official Anthropic OAuth usage API (`~/.claude/.credentials.json`) |
+| **OpenAI Codex** | 5h Session + Weekly | ChatGPT WHAM usage endpoint (`~/.codex/auth.json`) |
+| **Claude Code** | 5h Session + Weekly | Official Anthropic OAuth usage API (`~/.claude/.credentials.json`) |
 | **Gemini / Antigravity** | Quota Summary / Limits | Official Antigravity CLI token vault & Cloud Code usage API |
 | **Cursor** | Monthly Period Usage | Cursor IDE local state (`state.vscdb` / session token) |
 | **Grok CLI** | Session + Billing Credits | Grok CLI local configuration & billing endpoint |
@@ -66,7 +67,7 @@ Agent Notch detects and tracks live usage for major coding agent ecosystems dire
   └─────────────────────────┘   └──────┘
 ```
 
-- **Color-Coded Status Rings**:
+- **Color-Coded Status Rings** (default 80% critical threshold; configurable in Settings):
   - 🟢 **Normal (< 50%)**: Healthy quota headroom.
   - 🟡 **Warning (50% – 80%)**: Approaching session threshold.
   - 🔴 **Critical (80%+)**: Imminent rate-limit window.
@@ -169,6 +170,10 @@ To reduce animations (disables sliding handoff animations and keeps glow effects
 - Toggle **Reduce Motion** in the in-app Settings Drawer (⚙️ gear icon).
 - Or export the environment variable: `NOTCH_REDUCE_MOTION=1`.
 
+### Local Settings File
+
+Notch stores its own settings in `%APPDATA%\Agent Notch\config.json`. Existing installs are migrated from the legacy repository-level `notch_config.json` on first read; the legacy file is left untouched.
+
 ---
 
 ## 🛠️ Adding Custom CLI Agents
@@ -189,13 +194,16 @@ You can add any custom coding assistant or local LLM CLI to the dock via the Set
    - **Manual Snapshot**: Set fixed percentage values for manual tracking.
    - **Unmanaged**: Displays as an unmetered ring with active process detection.
 
+Custom quota commands run locally on each refresh. Only configure commands you trust.
+
 ---
 
 ## 🏛️ Architecture & Design Philosophy
 
 - **Zero Interruption**: Frameless, transparent Electron overlay configured with OS-level click forwarding so your IDE, terminal, and browser interactions remain completely uninterrupted.
-- **Local-First Security**: Scrapers only inspect local OS credential stores (`~/.claude/`, `~/.codex/`, `~/.gemini/`, Windows Credential Manager). No tokens or telemetry leave your machine.
-- **Spectator Boundary**: Notch is strictly a visual monitor. It never mutates configs, intercepts toolcalls, or handles task execution.
+- **Local-First Security**: Notch has no telemetry or tracking backend. Provider credentials are read locally and sent only to that provider's official usage, billing, or OAuth endpoint when needed to retrieve quota data.
+- **Credential Spectator Boundary**: Notch does not rewrite or refresh provider credential files. An expired Claude session asks you to sign in through Claude Code. Google token refresh, when explicitly configured, is held in memory.
+- **Job Spectator Boundary**: Notch never transfers jobs or controls MindSync execution; it only reads MindSync job metadata for the active glow and handoff flash.
 
 ---
 

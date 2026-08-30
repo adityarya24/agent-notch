@@ -17,8 +17,9 @@ function CircularProgressRingInner({
   const getColor = () => {
     if (status === 'expired') return '#f59e0b';
     if (status === 'unknown' || !known) return '#52525b';
-    if (safeProgress >= 80 || status === 'critical') return '#ef4444';
-    if (safeProgress >= 50 || status === 'warning') return '#f59e0b';
+    if (status === 'stale') return '#a1a1aa';
+    if (status === 'critical') return '#ef4444';
+    if (status === 'warning') return '#f59e0b';
     return '#10b981';
   };
 

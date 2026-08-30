@@ -2,7 +2,7 @@
 
 Right-edge HUD for live AI coding-agent quotas, plus a read-only view of MindSync job handoffs.
 
-**Status (2026-08-30):** Public at [adityarya24/agent-notch](https://github.com/adityarya24/agent-notch) (`v1.0.0`). Phase 1–3 glow live. Mac / multi-monitor / packaged installer are demand-driven — see README Upcoming.
+**Status (2026-08-31):** Public at [adityarya24/agent-notch](https://github.com/adityarya24/agent-notch) (`v1.0.0`); `v1.0.1` hardening is in preparation. Phase 1–3 glow live. Mac / multi-monitor / packaged installer are demand-driven — see README Upcoming.
 
 ---
 
@@ -49,7 +49,7 @@ MindSync dispatch has preemptive readers and headroom ranking. Notch stays a spe
 
 - [x] System tray + `Ctrl+Shift+U`.
 - [x] Windows autostart via `notch autostart`.
-- [x] Reliable `notch status` / restart via pid file.
+- [x] Reliable `notch status` / restart via per-user PID state plus process ownership discovery.
 - [ ] Multi-monitor pick (primary vs secondary).
 - [x] One-click Windows install (`install.bat` / `install.ps1`) plus `npm i -g github:adityarya24/agent-notch`.
 - [x] Antigravity Google OAuth client via env / gitignored `.env` (same names as MindSync).

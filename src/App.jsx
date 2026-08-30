@@ -68,11 +68,18 @@ export default function App() {
     };
   }, []);
 
-  const handleSaveConfig = (newCfg) => {
-    if (window.agentNotchAPI?.saveConfig) {
-      window.agentNotchAPI.saveConfig(newCfg);
+  const handleSaveConfig = async (newCfg) => {
+    try {
+      if (window.agentNotchAPI?.saveConfig) {
+        const result = await window.agentNotchAPI.saveConfig(newCfg);
+        if (!result?.success) return result;
+        newCfg = result.config || newCfg;
+      }
+      setData((prev) => ({ ...prev, config: { ...(prev.config || {}), ...newCfg }, reduceMotion: Boolean(newCfg.reduceMotion) }));
+      return { success: true, config: newCfg };
+    } catch (error) {
+      return { success: false, message: error.message || 'Could not save settings' };
     }
-    setData((prev) => ({ ...prev, config: { ...(prev.config || {}), ...newCfg }, reduceMotion: Boolean(newCfg.reduceMotion) }));
   };
 
   const job = data.jobActivity && data.jobActivity.jobStatus === 'running' ? data.jobActivity : null;
@@ -175,7 +182,7 @@ export default function App() {
                   size={38}
                   strokeWidth={3}
                   progress={m.ringPercent}
-                  status={m.status || m.quotaState}
+                  status={m.stale ? 'stale' : (m.status || m.quotaState)}
                   isActive={hoveredModelId === m.id}
                 >
                   {getModelIcon(m.icon)}
@@ -189,14 +196,15 @@ export default function App() {
 
                 <span className={`text-[10px] font-mono font-bold transition-colors duration-200 ${
                   m.quotaState === 'expired' ? 'text-amber-400' :
+                  m.stale ? 'text-neutral-400' :
                   m.quotaState !== 'known' || m.ringPercent == null ? 'text-neutral-500' :
-                  m.ringPercent >= 80 ? 'text-red-400' :
-                  m.ringPercent >= 50 ? 'text-amber-400' :
+                  m.status === 'critical' ? 'text-red-400' :
+                  m.status === 'warning' ? 'text-amber-400' :
                   'text-neutral-400 group-hover:text-emerald-400'
                 }`}>
                   {m.quotaState === 'expired' ? 'login' :
                     m.quotaState !== 'known' || m.ringPercent == null ? '—' :
-                    `${m.ringPercent}%`}
+                    `${m.stale ? '~' : ''}${m.ringPercent}%`}
                 </span>
               </div>
             );

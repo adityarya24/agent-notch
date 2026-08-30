@@ -3,12 +3,18 @@
 const { execSync, spawn, spawnSync } = require('child_process');
 const path = require('path');
 const fs = require('fs');
+const {
+  runtimePath,
+  ensureRuntimeDir,
+  readPid: readRuntimePid,
+  clearPid: clearRuntimePid
+} = require('../electron/runtime-state');
 
 const rootDir = path.resolve(__dirname, '..');
 const distIndex = path.join(rootDir, 'dist', 'index.html');
-const pidFile = path.join(rootDir, 'notch.pid');
+const legacyPidFile = path.join(rootDir, 'notch.pid');
 const mainJs = path.join(rootDir, 'electron', 'main.js');
-const logFile = path.join(rootDir, 'electron_boot.log');
+const logFile = runtimePath('electron_boot.log');
 const smokeScript = path.join(rootDir, 'scripts', 'smoke-glow.js');
 
 const args = process.argv.slice(2);
@@ -28,9 +34,9 @@ function resolveElectron() {
 
 const electronPath = resolveElectron();
 
-function readPid() {
+function readLegacyPid() {
   try {
-    const pid = Number(String(fs.readFileSync(pidFile, 'utf8')).trim());
+    const pid = Number(String(fs.readFileSync(legacyPidFile, 'utf8')).trim());
     return Number.isInteger(pid) && pid > 0 ? pid : null;
   } catch (e) {
     return null;
@@ -46,15 +52,65 @@ function isPidAlive(pid) {
   }
 }
 
-function isRunning() {
-  const pid = readPid();
-  return Boolean(pid && isPidAlive(pid));
+function windowsProcessCommandLine(pid) {
+  if (process.platform !== 'win32') return '';
+  const script = "(Get-CimInstance Win32_Process -Filter ('ProcessId = ' + $env:NOTCH_PID)).CommandLine";
+  const result = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], {
+    encoding: 'utf8',
+    windowsHide: true,
+    env: { ...process.env, NOTCH_PID: String(pid) }
+  });
+  return String(result.stdout || '').trim();
 }
 
-function clearPid() {
+function isOwnedPid(pid) {
+  if (!pid || !isPidAlive(pid)) return false;
+  if (process.platform !== 'win32') return true;
+  return windowsProcessCommandLine(pid).toLowerCase().includes(mainJs.toLowerCase());
+}
+
+function discoverWindowsPid() {
+  if (process.platform !== 'win32') return null;
+  const script = [
+    "$needle = $env:NOTCH_MAIN_NEEDLE;",
+    "Get-CimInstance Win32_Process -Filter \"Name = 'electron.exe'\" |",
+    "  Where-Object { $_.CommandLine -and $_.CommandLine.IndexOf($needle, [StringComparison]::OrdinalIgnoreCase) -ge 0 } |",
+    "  Select-Object -First 1 -ExpandProperty ProcessId"
+  ].join(' ');
+  const result = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], {
+    encoding: 'utf8',
+    windowsHide: true,
+    env: { ...process.env, NOTCH_MAIN_NEEDLE: mainJs }
+  });
+  const pid = Number(String(result.stdout || '').trim());
+  return Number.isInteger(pid) && pid > 0 && isPidAlive(pid) ? pid : null;
+}
+
+function findRunningPid() {
+  const runtimePid = readRuntimePid();
+  if (isOwnedPid(runtimePid)) return runtimePid;
+  const legacyPid = readLegacyPid();
+  if (isOwnedPid(legacyPid)) return legacyPid;
+  return discoverWindowsPid();
+}
+
+function isRunning() {
+  return Boolean(findRunningPid());
+}
+
+function clearLegacyPid(expectedPid) {
   try {
-    fs.unlinkSync(pidFile);
+    const current = readLegacyPid();
+    if (expectedPid && current !== expectedPid) return;
+    fs.unlinkSync(legacyPidFile);
   } catch (e) {}
+}
+
+function clearStalePidFiles() {
+  const runtimePid = readRuntimePid();
+  if (runtimePid && !isOwnedPid(runtimePid)) clearRuntimePid(runtimePid);
+  const legacyPid = readLegacyPid();
+  if (legacyPid && !isOwnedPid(legacyPid)) clearLegacyPid(legacyPid);
 }
 
 function sleep(ms) {
@@ -71,6 +127,7 @@ function spawnElectron() {
   }
   let stdio = 'ignore';
   try {
+    ensureRuntimeDir();
     const fd = fs.openSync(logFile, 'a');
     stdio = ['ignore', fd, fd];
   } catch (e) {}
@@ -95,16 +152,22 @@ function waitUntilRunning(ms = 4000) {
 }
 
 function stopNotch() {
-  const pid = readPid();
+  const pid = findRunningPid();
   if (pid && isPidAlive(pid)) {
-    try {
-      execSync(`taskkill /PID ${pid} /T /F`, { stdio: 'ignore' });
-    } catch (e) {}
-    clearPid();
-    console.log('Agent Notch stopped.');
+    const result = process.platform === 'win32'
+      ? spawnSync('taskkill.exe', ['/PID', String(pid), '/T', '/F'], { stdio: 'ignore', windowsHide: true })
+      : spawnSync('kill', [String(pid)], { stdio: 'ignore' });
+    if (result.status === 0 || !isPidAlive(pid)) {
+      clearRuntimePid(pid);
+      clearLegacyPid(pid);
+      console.log('Agent Notch stopped.');
+      return;
+    }
+    console.error(`Could not stop Agent Notch process ${pid}.`);
+    process.exitCode = 1;
     return;
   }
-  clearPid();
+  clearStalePidFiles();
   console.log('No active Agent Notch instance found.');
 }
 
@@ -115,7 +178,7 @@ function startNotch() {
     console.log('Hotkey Ctrl+Shift+U hides/shows. It cannot start the app after Quit.');
     return;
   }
-  clearPid();
+  clearStalePidFiles();
   try {
     spawnElectron();
   } catch (err) {

@@ -1,0 +1,74 @@
+const assert = require('node:assert/strict');
+const fs = require('node:fs');
+const os = require('node:os');
+const path = require('node:path');
+const test = require('node:test');
+
+const config = require('../electron/config');
+
+function tempDir() {
+  return fs.mkdtempSync(path.join(os.tmpdir(), 'agent-notch-config-'));
+}
+
+test('sanitizeConfig bounds untrusted values and preserves supported providers', () => {
+  const result = config.sanitizeConfig({
+    enabledModels: { codex: false, bogus: true, custom_ok: true },
+    alertThreshold: 500,
+    reduceMotion: 1,
+    customAgents: [{
+      id: 'custom_ok',
+      name: '  Local Agent  ',
+      quotaSource: 'manual',
+      icon: 'bogus',
+      sessionUsedPercent: -5,
+      weeklyUsedPercent: 101
+    }]
+  });
+
+  assert.equal(result.enabledModels.codex, false);
+  assert.equal(result.enabledModels.bogus, undefined);
+  assert.equal(result.enabledModels.custom_ok, true);
+  assert.equal(result.alertThreshold, 100);
+  assert.equal(result.reduceMotion, true);
+  assert.equal(result.customAgents[0].name, 'Local Agent');
+  assert.equal(result.customAgents[0].icon, 'spark');
+  assert.equal(result.customAgents[0].sessionUsedPercent, 0);
+  assert.equal(result.customAgents[0].weeklyUsedPercent, 100);
+});
+
+test('legacy repo config migrates into the per-user config directory without deletion', () => {
+  const root = tempDir();
+  const currentDir = path.join(root, 'current');
+  const legacyPath = path.join(root, 'notch_config.json');
+  fs.writeFileSync(legacyPath, JSON.stringify({ alertThreshold: 72, enabledModels: { claude: false } }));
+  process.env.NOTCH_CONFIG_DIR = currentDir;
+  process.env.NOTCH_LEGACY_CONFIG_PATH = legacyPath;
+
+  try {
+    const result = config.getLocalConfig();
+    assert.equal(result.alertThreshold, 72);
+    assert.equal(result.enabledModels.claude, false);
+    assert.equal(fs.existsSync(legacyPath), true);
+    assert.equal(fs.existsSync(path.join(currentDir, 'config.json')), true);
+  } finally {
+    delete process.env.NOTCH_CONFIG_DIR;
+    delete process.env.NOTCH_LEGACY_CONFIG_PATH;
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('saveLocalConfig writes sanitized JSON atomically', () => {
+  const root = tempDir();
+  process.env.NOTCH_CONFIG_DIR = root;
+  try {
+    const saved = config.saveLocalConfig({ alertThreshold: 40, enabledModels: { grok: false } });
+    assert.equal(saved.alertThreshold, 50);
+    assert.equal(saved.enabledModels.grok, false);
+    const disk = JSON.parse(fs.readFileSync(path.join(root, 'config.json'), 'utf8'));
+    assert.deepEqual(disk, saved);
+    assert.equal(fs.readdirSync(root).some((name) => name.endsWith('.tmp')), false);
+  } finally {
+    delete process.env.NOTCH_CONFIG_DIR;
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
