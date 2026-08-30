@@ -1,8 +1,8 @@
 # ⚡ Agent Notch
 
 <p align="center">
-  <strong>Ambient right-edge desktop HUD for live AI coding-agent quotas and MindSync handoffs.</strong><br>
-  <em>Windows-first • Electron + React 19 + Tailwind CSS v4 • Zero telemetry • Pure spectator</em>
+  <strong>Ambient right-edge desktop HUD for live AI coding-agent quotas and session limits.</strong><br>
+  <em>Windows-first • Electron + React 19 + Tailwind CSS v4 • 100% Standalone • Zero telemetry</em>
 </p>
 
 <p align="center">
@@ -16,17 +16,19 @@
 
 ## 🎯 Overview
 
-**Agent Notch** is an ultra-lightweight, always-on-top ambient dock snapped to the right edge of your screen. It provides instant visibility into live token quotas, rate limits, and multi-agent task handoffs across your local AI engineering toolchain.
+**Agent Notch** is an ultra-lightweight, always-on-top ambient desktop HUD snapped to the right edge of your screen. It gives you instant, zero-friction visibility into live token quotas, session rate-limits, and weekly usage windows across all your AI coding tools — without opening browser dashboards or checking multiple terminals.
 
-- **Account-Level Quota Rings**: Real-time session and weekly usage percentages at a glance.
-- **Strictly Grounded**: Never estimates or shows fake percentages. Unknown or unauthenticated quotas display as `—` or `login`.
-- **Zero-Lag Click-Through**: Transparent overlay pixels automatically forward all mouse clicks and scrolls to background windows.
-- **MindSync Integration**: Ambient status indicators and brief, non-intrusive handoff animations (`from → to (reason)`) without touching job dispatch.
-- **Local & Private**: Reads credentials directly from local environment paths and official CLI vaults. Zero telemetry, zero external tracking.
+- **Account-Level Quota Rings**: Real-time session and weekly usage percentages at a single glance.
+- **Strictly Grounded Quotas**: Never estimates or shows fake percentages. Unknown or unauthenticated accounts display as `—` or `login`.
+- **Zero-Lag Click-Through**: Transparent overlay pixels automatically forward all mouse clicks, drags, and scrolls to background windows.
+- **100% Standalone & Local-First**: Works immediately out of the box using your local CLI credentials. Zero telemetry, zero external tracking servers.
+- **Custom Extensible**: Easily monitor custom CLI agents or scripts via stdout JSON commands or manual snapshots.
 
 ---
 
 ## 📊 Supported Providers & Quota Adapters
+
+Agent Notch detects and tracks live usage for major coding agent ecosystems directly from local session vaults:
 
 | Provider / Ring | Monitored Windows | Data Source & Detection |
 | :--- | :--- | :--- |
@@ -52,8 +54,8 @@
   │  Weekly:  [████------]  │───│ (45%)│ 🟢 Normal (<50%)
   │  Resets in 1h 24m       │   ├──────┤
   │                         │───│ (65%)│ 🟡 Warning (50-80%)
-  │  ● Active: Satyaki      │   ├──────┤
-  │  codex → grok (quota)   │───│ ( — )│ ⚪ Unknown / Unconfigured
+  │  ● Active Session       │   ├──────┤
+  │  5h window expiring     │───│ ( — )│ ⚪ Unknown / Unconfigured
   └─────────────────────────┘   └──────┘
 ```
 
@@ -62,8 +64,20 @@
   - 🟡 **Warning (50% – 80%)**: Approaching session threshold.
   - 🔴 **Critical (80%+)**: Imminent rate-limit window.
 - **Hover Popover Cards**: Detailed dual-meter breakdown (Session vs. Weekly/Monthly) with exact humanized reset countdowns (e.g. *“Resets in 2h 15m”*).
-- **MindSync Active Agent Glow**: When a MindSync job is actively running, the assigned agent's ring receives a subtle emerald dot and breathing background glow.
-- **One-Shot Handoff Banners**: When tasks transition between agents, a brief 2–3s banner plays once (e.g. `codex → grok (quota exhausted)`), then quietly settles.
+- **Settings Drawer**: Configure visible models, reorder docks, adjust alert thresholds, and add custom CLIs on the fly.
+
+---
+
+## 🔄 Optional: MindSync Multi-Agent Integration
+
+> [!TIP]
+> **Agent Notch works 100% standalone.** You do **not** need MindSync to monitor quotas.
+
+If you also use [**MindSync**](https://github.com/adityarya24/mindsync-ai) for multi-agent task dispatch and automated failover across local and VPS agents, Notch automatically surfaces live orchestration status:
+
+- **Active Agent Glow**: The actively executing agent ring gains a subtle emerald indicator dot and soft background glow.
+- **One-Shot Handoff Flash**: When MindSync transitions a task between agents (e.g. `codex → grok (quota exhausted)`), a non-intrusive 2–3s banner plays once and quietly settles.
+- **Pure Spectator**: Notch never touches job execution, task transfers, or dispatch — it purely reflects live state from `~/.mindsync/dispatch/jobs/`.
 
 ---
 
@@ -172,9 +186,9 @@ You can add any custom coding assistant or local LLM CLI to the dock via the Set
 
 ## 🏛️ Architecture & Design Philosophy
 
-- **Spectator Only**: Agent Notch displays state. It never mutates configs, intercepts toolcalls, or handles task delegation. Job scheduling and dispatch belong exclusively to [MindSync](https://github.com/adityarya24/mindsync-ai).
 - **Zero Interruption**: Frameless, transparent Electron overlay configured with OS-level click forwarding so your IDE, terminal, and browser interactions remain completely uninterrupted.
 - **Local-First Security**: Scrapers only inspect local OS credential stores (`~/.claude/`, `~/.codex/`, `~/.gemini/`, Windows Credential Manager). No tokens or telemetry leave your machine.
+- **Spectator Boundary**: Notch is strictly a visual monitor. It never mutates configs, intercepts toolcalls, or handles task execution.
 
 ---
 
