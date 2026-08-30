@@ -19,7 +19,7 @@ const logFile = runtimePath('electron_boot.log');
 const OVERLAY = {
   dock: { width: 360, height: 620 },
   settings: { width: 440, height: 640 },
-  collapsed: { width: 52, height: 76 }
+  collapsed: { width: 26, height: 64 }
 };
 
 function reduceMotionEnabled(cfg) {

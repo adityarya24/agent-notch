@@ -156,9 +156,9 @@ export default function App() {
           onClick={() => setCollapsed(false)}
           title="Expand Agent Notch"
           aria-label="Expand Agent Notch"
-          className="w-[46px] h-16 rounded-l-2xl border-l-2 border-y-2 border-[#27272a] bg-[#09090b]/98 text-neutral-400 shadow-2xl shadow-black/90 flex items-center justify-center transition-colors hover:border-emerald-400/60 hover:text-emerald-300"
+          className="w-[22px] h-12 rounded-l-full border-l-2 border-y-2 border-[#3f3f46] bg-[#09090b]/98 text-neutral-400 shadow-xl shadow-black/90 flex items-center justify-center transition-colors hover:border-emerald-400/70 hover:text-emerald-300"
         >
-          <ChevronLeft className="w-4 h-4" />
+          <ChevronLeft className="w-3.5 h-3.5" />
         </button>
       </div>
     );
@@ -192,6 +192,16 @@ export default function App() {
         className="relative bg-[#09090b]/98 backdrop-blur-2xl border-l-2 border-t-2 border-b-2 border-[#27272a] shadow-2xl shadow-black/95 py-3 px-2 rounded-l-[26px] z-40 transition-all duration-200 hover:border-[#34d399]/60 max-h-[560px] flex flex-col items-center justify-between gap-2"
         onMouseLeave={() => setHoveredModelId(null)}
       >
+        <button
+          type="button"
+          onClick={() => setCollapsed(true)}
+          title="Collapse Agent Notch"
+          aria-label="Collapse Agent Notch"
+          className="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-11 rounded-l-xl border-l border-y border-[#3f3f46] bg-[#09090b] text-neutral-400 shadow-lg shadow-black/70 z-50 flex items-center justify-center transition-colors hover:border-emerald-400/70 hover:text-emerald-300"
+        >
+          <ChevronRight className="w-3.5 h-3.5" />
+        </button>
+
         {/* Scrollable Model Rings List */}
         <div
           ref={scrollRef}
@@ -260,16 +270,7 @@ export default function App() {
             {flash.line}
           </div>
         )}
-        <div className="pt-1.5 border-t border-[#27272a]/60 w-full flex justify-center gap-1">
-          <button
-            type="button"
-            onClick={() => setCollapsed(true)}
-            title="Collapse Agent Notch"
-            aria-label="Collapse Agent Notch"
-            className="p-1.5 rounded-full text-neutral-400 hover:text-emerald-300 hover:bg-white/10 transition-all duration-200"
-          >
-            <ChevronRight className="w-3.5 h-3.5" />
-          </button>
+        <div className="pt-1.5 border-t border-[#27272a]/60 w-full flex justify-center">
           <button
             onClick={() => {
               setHoveredModelId(null);
