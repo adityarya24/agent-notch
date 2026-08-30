@@ -1,4 +1,4 @@
-const { app, BrowserWindow, screen, ipcMain, Tray, Menu, globalShortcut, nativeImage } = require('electron');
+const { app, BrowserWindow, screen, ipcMain, Tray, Menu, globalShortcut, nativeImage, desktopCapturer } = require('electron');
 const path = require('path');
 const fs = require('fs');
 const { getAllInstalledAgentUsage, getLocalConfig, saveLocalConfig, probeCli, suggestCustomClis } = require('./scrapers');
@@ -11,6 +11,13 @@ let jobPollTimer = null;
 let cachedQuotaState = null;
 let overlayMode = 'dock';
 const pidFile = path.join(__dirname, '..', 'notch.pid');
+
+try {
+  fs.appendFileSync(
+    path.join(__dirname, '..', 'electron_boot.log'),
+    `[boot] pid=${process.pid} capture=${process.env.NOTCH_CAPTURE || ''}\n`
+  );
+} catch (e) {}
 
 function writePid() {
   try {
@@ -130,6 +137,11 @@ function createOverlayWindow() {
 
     // Trigger immediate live refresh
     refreshUsageData();
+    if (process.env.NOTCH_CAPTURE) {
+      runCaptureIfRequested().catch((err) => {
+        console.error('[Agent Notch] capture failed', err);
+      });
+    }
   });
 
   mainWindow.on('closed', () => {
@@ -311,6 +323,56 @@ ipcMain.on('set-ignore-mouse-events', (_event, ignore) => {
     mainWindow.setIgnoreMouseEvents(false);
   }
 });
+
+async function runCaptureIfRequested() {
+  const dir = String(process.env.NOTCH_CAPTURE || '').trim();
+  try {
+    fs.appendFileSync(path.join(__dirname, '..', 'electron_boot.log'), `[capture] dir=${dir || '(empty)'}\n`);
+  } catch (e) {}
+  if (!dir) return;
+  fs.mkdirSync(dir, { recursive: true });
+  const frames = Math.max(1, Number(process.env.NOTCH_CAPTURE_FRAMES || 1) || 1);
+  const interval = Math.max(80, Number(process.env.NOTCH_CAPTURE_MS || 220) || 220);
+  await new Promise((resolve) => setTimeout(resolve, 2200));
+  const display = screen.getPrimaryDisplay();
+  const scale = display.scaleFactor || 1;
+  const { width, height } = display.size;
+  const withTimeout = (promise, ms) => Promise.race([
+    promise,
+    new Promise((_, reject) => setTimeout(() => reject(new Error('capture timeout')), ms))
+  ]);
+  fs.writeFileSync(path.join(dir, 'started.json'), `${JSON.stringify({ frames, at: new Date().toISOString() })}\n`);
+  for (let i = 0; i < frames; i += 1) {
+    const n = String(i).padStart(2, '0');
+    try {
+      if (mainWindow && !mainWindow.isDestroyed()) {
+        const page = await withTimeout(mainWindow.capturePage(), 2500);
+        fs.writeFileSync(path.join(dir, `page-${n}.png`), page.toPNG());
+      }
+    } catch (e) {
+      try { fs.appendFileSync(path.join(__dirname, '..', 'electron_boot.log'), `[capture] page ${n} ${e.message}\n`); } catch (err) {}
+    }
+    try {
+      const sources = await withTimeout(desktopCapturer.getSources({
+        types: ['screen'],
+        thumbnailSize: {
+          width: Math.round(width * scale),
+          height: Math.round(height * scale)
+        }
+      }), 2500);
+      if (sources[0] && sources[0].thumbnail) {
+        fs.writeFileSync(path.join(dir, `desk-${n}.png`), sources[0].thumbnail.toPNG());
+      }
+    } catch (e) {
+      try { fs.appendFileSync(path.join(__dirname, '..', 'electron_boot.log'), `[capture] desk ${n} ${e.message}\n`); } catch (err) {}
+    }
+    if (i < frames - 1) {
+      await new Promise((resolve) => setTimeout(resolve, interval));
+    }
+  }
+  fs.writeFileSync(path.join(dir, 'done.json'), `${JSON.stringify({ frames, at: new Date().toISOString() })}\n`);
+  if (process.env.NOTCH_CAPTURE_QUIT === '1') app.quit();
+}
 
 app.whenReady().then(() => {
   writePid();

@@ -18,5 +18,8 @@ electron_boot.log
 capture_once.js
 capture_once.log
 .capture-tmp/
+docs/media/raw/
+docs/media/desktop.png
+docs/media/desktop-edge.png
 start_background.vbs
 start_notch.vbs
