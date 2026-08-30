@@ -64,7 +64,7 @@ Agent Notch detects and tracks live usage for major coding agent ecosystems dire
   - 🟡 **Warning (50% – 80%)**: Approaching session threshold.
   - 🔴 **Critical (80%+)**: Imminent rate-limit window.
 - **Hover Popover Cards**: Detailed dual-meter breakdown (Session vs. Weekly/Monthly) with exact humanized reset countdowns (e.g. *“Resets in 2h 15m”*).
-- **Settings Drawer**: Configure visible models, reorder docks, adjust alert thresholds, and add custom CLIs on the fly.
+- **Settings Drawer**: Toggle which CLIs appear, set the alert threshold, add custom CLIs, and turn handoff animation off.
 
 ---
 
@@ -189,6 +189,19 @@ You can add any custom coding assistant or local LLM CLI to the dock via the Set
 - **Zero Interruption**: Frameless, transparent Electron overlay configured with OS-level click forwarding so your IDE, terminal, and browser interactions remain completely uninterrupted.
 - **Local-First Security**: Scrapers only inspect local OS credential stores (`~/.claude/`, `~/.codex/`, `~/.gemini/`, Windows Credential Manager). No tokens or telemetry leave your machine.
 - **Spectator Boundary**: Notch is strictly a visual monitor. It never mutates configs, intercepts toolcalls, or handles task execution.
+
+---
+
+## 🗺️ Upcoming (demand-driven)
+
+Windows is the supported host. No dates — these land if people actually ask:
+
+- **macOS** — overlay + Login Item + Keychain / Cursor `Library` paths. Electron can show a window today; CLI, autostart, and several quota readers are still Windows-only.
+- **Multi-monitor** — pick which display’s right edge.
+- **Packaged Windows installer** — NSIS / winget after the `npm i -g` path.
+- **Vertical slide** on the right edge so the dock can sit above or below other overlays.
+
+Not on the list: free-floating drag, fake desktop glass, or job transfer (that stays MindSync).
 
 ---
 

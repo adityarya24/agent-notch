@@ -2,7 +2,7 @@
 
 Right-edge HUD for live AI coding-agent quotas, plus a read-only view of MindSync job handoffs.
 
-**Status (2026-08-30):** Phase 1–2 wrapped. Phase 3 glow + one-shot handoff live. Public-ready: Antigravity OAuth is env-only, Windows one-click install is `install.bat` / `install.ps1`. MindSync issues #65–#71 are closed; readers and headroom ranking live in `mindsync-ai`, not in this repo.
+**Status (2026-08-30):** Public at [adityarya24/agent-notch](https://github.com/adityarya24/agent-notch) (`v1.0.0`). Phase 1–3 glow live. Mac / multi-monitor / packaged installer are demand-driven — see README Upcoming.
 
 ---
 

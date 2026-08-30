@@ -1,7 +1,7 @@
 {
   "name": "agent-notch",
   "version": "1.0.0",
-  "description": "Sleek ambient desktop side-notch HUD for live AI agent session limits and MindSync handoffs",
+  "description": "Ambient right-edge desktop HUD for live AI coding-agent quotas. Windows-first, standalone, optional MindSync glow.",
   "main": "electron/main.js",
   "bin": {
     "notch": "./bin/cli.js",
