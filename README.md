@@ -51,10 +51,6 @@ Agent Notch detects and tracks live usage for major coding agent ecosystems dire
 
 ## 🖥️ Visual HUD Features
 
-<p align="center">
-  <img src="docs/media/hud-desktop.jpg" alt="Agent Notch on the Windows desktop — right-edge quota HUD" width="900">
-</p>
-
 ```
           [ Screen Edge ]
   ┌─────────────────────────┐
