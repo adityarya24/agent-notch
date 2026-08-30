@@ -45,7 +45,7 @@ Agent Notch detects and tracks live usage for major coding agent ecosystems dire
 ## 🖥️ Visual HUD Features
 
 <p align="center">
-  <img src="docs/media/glow.gif" alt="Agent Notch right-edge HUD — grok glow and codex to grok handoff flash" width="220">
+  <img src="docs/media/hud-desktop.jpg" alt="Agent Notch on the Windows desktop — right-edge quota HUD" width="900">
 </p>
 
 ```
