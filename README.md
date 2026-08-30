@@ -13,7 +13,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/media/notch-handoff.gif" alt="Agent Notch: live quota rings, a glow on the working agent, and a one-shot flash when a job hands off" width="820">
+  <img src="docs/media/notch-handoff.gif" alt="Agent Notch: live quota rings, a glow on the working agent, and a one-shot flash when a job hands off" width="640">
 </p>
 
 <p align="center">
