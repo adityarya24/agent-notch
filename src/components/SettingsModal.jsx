@@ -42,10 +42,12 @@ export function SettingsModal({ isOpen, onClose, config, allDetectedIds, onSaveC
   });
   const [customAgents, setCustomAgents] = useState(Array.isArray(config?.customAgents) ? config.customAgents : []);
   const [reduceMotion, setReduceMotion] = useState(Boolean(config?.reduceMotion));
+  const [alertThreshold, setAlertThreshold] = useState(String(Number(config?.alertThreshold) || 80));
   const [showAdd, setShowAdd] = useState(false);
   const [draft, setDraft] = useState(emptyDraft());
   const [probe, setProbe] = useState(null);
   const [suggestions, setSuggestions] = useState([]);
+  const [saveError, setSaveError] = useState('');
 
   useEffect(() => {
     if (!isOpen || !window.agentNotchAPI?.suggestCustomClis) return;
@@ -82,18 +84,26 @@ export function SettingsModal({ isOpen, onClose, config, allDetectedIds, onSaveC
     }));
   };
 
+  const normalizedThreshold = () => Math.max(50, Math.min(100, Number(alertThreshold) || 80));
+
   const persist = (nextCustom, nextEnabled) => {
-    onSaveConfig({
+    return onSaveConfig({
       ...config,
       enabledModels: nextEnabled || enabledMap,
       customAgents: nextCustom || customAgents,
-      reduceMotion
+      reduceMotion,
+      alertThreshold: normalizedThreshold()
     });
   };
 
-  const handleSave = () => {
-    persist(customAgents, enabledMap);
-    onClose();
+  const handleSave = async () => {
+    setSaveError('');
+    const result = await persist(customAgents, enabledMap);
+    if (!result || result.success !== false) {
+      onClose();
+    } else {
+      setSaveError(result.message || 'Could not save settings');
+    }
   };
 
   const addAgent = (agent) => {
@@ -163,7 +173,7 @@ export function SettingsModal({ isOpen, onClose, config, allDetectedIds, onSaveC
 
       <div className="py-2 flex flex-col gap-1.5 overflow-y-auto pr-1 min-h-0 flex-1">
         <span className="text-[11px] font-mono text-neutral-400 uppercase tracking-wider">
-          Installed CLIs
+          Providers
         </span>
 
         {availableModels.map((m) => {
@@ -279,9 +289,10 @@ export function SettingsModal({ isOpen, onClose, config, allDetectedIds, onSaveC
               <option value="command">JSON quota command</option>
             </select>
             {draft.quotaSource === 'command' && (
-              <p className="text-[10px] text-neutral-500 leading-snug font-mono">
-                {'{"sessionUsedPercent":12,"weeklyUsedPercent":40}'}
-              </p>
+              <div className="text-[10px] text-neutral-500 leading-snug">
+                <p className="font-mono">{'{"sessionUsedPercent":12,"weeklyUsedPercent":40}'}</p>
+                <p className="mt-1 text-amber-400/80">Runs this local command when Notch refreshes. Only add commands you trust.</p>
+              </div>
             )}
             {draft.quotaSource === 'manual' && (
               <div className="flex gap-2">
@@ -325,6 +336,22 @@ export function SettingsModal({ isOpen, onClose, config, allDetectedIds, onSaveC
       </div>
 
       <div className="pt-2 border-t border-[#27272a]/70 shrink-0 flex flex-col gap-2">
+        {saveError ? <p className="px-1 text-[10px] text-red-400">{saveError}</p> : null}
+        <label className="flex items-center justify-between gap-3 px-1 text-[10px] text-neutral-400">
+          <span>Critical alert at</span>
+          <span className="flex items-center gap-1">
+            <input
+              type="number"
+              min="50"
+              max="100"
+              value={alertThreshold}
+              onChange={(event) => setAlertThreshold(event.target.value)}
+              onBlur={() => setAlertThreshold(String(normalizedThreshold()))}
+              className="w-12 rounded-md border border-white/10 bg-[#18181b] px-1.5 py-1 text-right font-mono text-neutral-200 outline-none focus:border-emerald-500/50"
+            />
+            <span>%</span>
+          </span>
+        </label>
         <button
           type="button"
           onClick={() => {
@@ -334,7 +361,8 @@ export function SettingsModal({ isOpen, onClose, config, allDetectedIds, onSaveC
               ...config,
               enabledModels: enabledMap,
               customAgents,
-              reduceMotion: next
+              reduceMotion: next,
+              alertThreshold: normalizedThreshold()
             });
           }}
           className="flex items-center justify-between px-1 py-0.5 text-[10px] text-neutral-400"

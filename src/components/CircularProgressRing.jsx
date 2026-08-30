@@ -17,8 +17,9 @@ function CircularProgressRingInner({
   const getColor = () => {
     if (status === 'expired') return '#f59e0b';
     if (status === 'unknown' || !known) return '#52525b';
-    if (safeProgress >= 80 || status === 'critical') return '#ef4444';
-    if (safeProgress >= 50 || status === 'warning') return '#f59e0b';
+    if (status === 'stale') return '#a1a1aa';
+    if (status === 'critical') return '#ef4444';
+    if (status === 'warning') return '#f59e0b';
     return '#10b981';
   };
 
@@ -57,7 +58,7 @@ function CircularProgressRingInner({
       </svg>
 
       <div className={`absolute inset-[4px] rounded-full bg-[#18181b] flex items-center justify-center transition-colors duration-200 ${isActive ? 'ring-1 ring-white/30' : 'group-hover:bg-[#27272a]'}`}>
-        <div style={{ color: ringColor }}>
+        <div className="w-4 h-4 flex items-center justify-center leading-none" style={{ color: ringColor }}>
           {children}
         </div>
       </div>

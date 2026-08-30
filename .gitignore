@@ -7,6 +7,7 @@ release/
 .env
 .env.local
 notch.pid
+notch_config.json
 diagnose_window.js
 display_info.json
 window_diagnostics.json

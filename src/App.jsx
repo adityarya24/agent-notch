@@ -15,12 +15,19 @@ export default function App() {
 
   const [hoveredModelId, setHoveredModelId] = useState(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(() => typeof window !== 'undefined' && window.innerWidth < 100);
   const [flash, setFlash] = useState(null);
   const scrollRef = useRef(null);
   const ignoringClicks = useRef(null);
   const playedHandoffs = useRef(new Set());
+  const collapseInitialized = useRef(false);
 
   useEffect(() => {
+    if (window.agentNotchAPI?.getConfig) {
+      window.agentNotchAPI.getConfig().then((config) => {
+        if (config) setData((prev) => ({ ...prev, config }));
+      });
+    }
     if (window.agentNotchAPI?.getUsageData) {
       window.agentNotchAPI.getUsageData().then((res) => {
         if (res && res.models) setData(res);
@@ -36,8 +43,15 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    window.agentNotchAPI?.setOverlayMode?.(isSettingsOpen ? 'settings' : 'dock');
-  }, [isSettingsOpen]);
+    if (!data.config || collapseInitialized.current) return;
+    collapseInitialized.current = true;
+    setIsCollapsed(Boolean(data.config.collapsed));
+  }, [data.config]);
+
+  useEffect(() => {
+    const mode = isCollapsed ? 'collapsed' : (isSettingsOpen ? 'settings' : 'dock');
+    window.agentNotchAPI?.setOverlayMode?.(mode);
+  }, [isCollapsed, isSettingsOpen]);
 
   useEffect(() => {
     const api = window.agentNotchAPI;
@@ -68,11 +82,28 @@ export default function App() {
     };
   }, []);
 
-  const handleSaveConfig = (newCfg) => {
-    if (window.agentNotchAPI?.saveConfig) {
-      window.agentNotchAPI.saveConfig(newCfg);
+  const handleSaveConfig = async (newCfg) => {
+    try {
+      if (window.agentNotchAPI?.saveConfig) {
+        const result = await window.agentNotchAPI.saveConfig(newCfg);
+        if (!result?.success) return result;
+        newCfg = result.config || newCfg;
+      }
+      setData((prev) => ({ ...prev, config: { ...(prev.config || {}), ...newCfg }, reduceMotion: Boolean(newCfg.reduceMotion) }));
+      return { success: true, config: newCfg };
+    } catch (error) {
+      return { success: false, message: error.message || 'Could not save settings' };
     }
-    setData((prev) => ({ ...prev, config: { ...(prev.config || {}), ...newCfg }, reduceMotion: Boolean(newCfg.reduceMotion) }));
+  };
+
+  const setCollapsed = async (next) => {
+    const previous = isCollapsed;
+    collapseInitialized.current = true;
+    setHoveredModelId(null);
+    setIsSettingsOpen(false);
+    setIsCollapsed(next);
+    const result = await handleSaveConfig({ ...(data.config || {}), collapsed: next });
+    if (result?.success === false) setIsCollapsed(previous);
   };
 
   const job = data.jobActivity && data.jobActivity.jobStatus === 'running' ? data.jobActivity : null;
@@ -100,7 +131,7 @@ export default function App() {
       case 'claude':
         return <ClaudeIcon className="w-4 h-4" />;
       case 'codex':
-        return <OpenAIClassicIcon className="w-4 h-4" />;
+        return <OpenAIClassicIcon className="block w-[15px] h-[15px] -translate-x-[0.25px]" />;
       case 'cursor':
         return <CursorIcon className="w-4 h-4" />;
       case 'opencode':
@@ -118,7 +149,7 @@ export default function App() {
 
   return (
     <div className={`w-full h-full flex items-center justify-end pr-0 select-none font-sans ${isSettingsOpen ? 'overflow-visible' : 'overflow-hidden'}`}>
-      <div data-hud className="flex items-center justify-end">
+      <div data-hud={isCollapsed ? undefined : true} className="flex items-center justify-end">
       {/* Popover / Settings Area on the Left */}
       <div className="mr-2 transition-all duration-200 z-50">
         {isSettingsOpen ? (
@@ -141,9 +172,36 @@ export default function App() {
 
       {/* Side Notch Dock Body with Smooth Scrolling & Settings Gear */}
       <div
-        className="relative bg-[#09090b]/98 backdrop-blur-2xl border-l-2 border-t-2 border-b-2 border-[#27272a] shadow-2xl shadow-black/95 py-3 px-2 rounded-l-[26px] z-40 transition-all duration-200 hover:border-[#34d399]/60 max-h-[560px] flex flex-col items-center justify-between gap-2"
+        className={`relative bg-[#09090b]/98 backdrop-blur-2xl border-l-2 border-t-2 border-b-2 shadow-2xl shadow-black/95 py-3 px-2 rounded-l-[26px] z-40 max-h-[560px] flex flex-col items-center justify-between gap-2 transition-[transform,border-color,opacity] ease-[cubic-bezier(0.22,1,0.36,1)] ${
+          isCollapsed
+            ? 'translate-x-[48px] border-[#3f3f46]/70 opacity-90'
+            : 'translate-x-0 border-[#27272a] hover:border-[#34d399]/60 opacity-100'
+        }`}
+        style={{ transitionDuration: reduceMotion ? '0ms' : '280ms' }}
         onMouseLeave={() => setHoveredModelId(null)}
       >
+        <button
+          data-hud
+          type="button"
+          onClick={() => setCollapsed(!isCollapsed)}
+          title={isCollapsed ? 'Reveal Agent Notch' : 'Tuck away Agent Notch'}
+          aria-label={isCollapsed ? 'Reveal Agent Notch' : 'Tuck away Agent Notch'}
+          aria-expanded={!isCollapsed}
+          className={`group/edge absolute -left-[19px] top-1/2 -translate-y-1/2 w-5 h-12 z-50 flex items-center justify-end focus:outline-none transition-opacity duration-200 ${hoveredModel || isSettingsOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
+        >
+          <span
+            aria-hidden="true"
+            className="relative w-[18px] h-10 rounded-l-[16px] border-l border-y border-[#52525b] bg-[#09090b] shadow-lg shadow-black/70 transition-[border-color,box-shadow] duration-200 group-hover/edge:border-emerald-400/75 group-hover/edge:shadow-emerald-950/40 group-focus-visible/edge:border-emerald-300"
+          >
+            <span className="absolute left-[7px] top-1/2 -translate-y-1/2 w-px h-3.5 rounded-full bg-neutral-500 transition-[height,background-color] duration-200 group-hover/edge:h-5 group-hover/edge:bg-emerald-300" />
+          </span>
+        </button>
+
+        <div
+          aria-hidden={isCollapsed}
+          className={`w-full flex flex-col items-center justify-between gap-2 transition-[opacity,filter] ${isCollapsed ? 'pointer-events-none opacity-0 blur-[1px]' : 'opacity-100 blur-0'}`}
+          style={{ transitionDuration: reduceMotion ? '0ms' : '180ms' }}
+        >
         {/* Scrollable Model Rings List */}
         <div
           ref={scrollRef}
@@ -160,7 +218,7 @@ export default function App() {
                 key={m.id}
                 className={`relative flex flex-col items-center gap-0.5 group cursor-pointer ${isFrom && !reduceMotion ? 'opacity-40' : 'opacity-100'}`}
                 onMouseEnter={() => {
-                  if (!isSettingsOpen) setHoveredModelId(m.id);
+                  if (!isCollapsed && !isSettingsOpen) setHoveredModelId(m.id);
                 }}
               >
                 {(isWork || isTo) && (
@@ -175,7 +233,7 @@ export default function App() {
                   size={38}
                   strokeWidth={3}
                   progress={m.ringPercent}
-                  status={m.status || m.quotaState}
+                  status={m.stale ? 'stale' : (m.status || m.quotaState)}
                   isActive={hoveredModelId === m.id}
                 >
                   {getModelIcon(m.icon)}
@@ -189,14 +247,15 @@ export default function App() {
 
                 <span className={`text-[10px] font-mono font-bold transition-colors duration-200 ${
                   m.quotaState === 'expired' ? 'text-amber-400' :
+                  m.stale ? 'text-neutral-400' :
                   m.quotaState !== 'known' || m.ringPercent == null ? 'text-neutral-500' :
-                  m.ringPercent >= 80 ? 'text-red-400' :
-                  m.ringPercent >= 50 ? 'text-amber-400' :
+                  m.status === 'critical' ? 'text-red-400' :
+                  m.status === 'warning' ? 'text-amber-400' :
                   'text-neutral-400 group-hover:text-emerald-400'
                 }`}>
                   {m.quotaState === 'expired' ? 'login' :
                     m.quotaState !== 'known' || m.ringPercent == null ? '—' :
-                    `${m.ringPercent}%`}
+                    `${m.stale ? '~' : ''}${m.ringPercent}%`}
                 </span>
               </div>
             );
@@ -213,6 +272,7 @@ export default function App() {
         )}
         <div className="pt-1.5 border-t border-[#27272a]/60 w-full flex justify-center">
           <button
+            tabIndex={isCollapsed ? -1 : 0}
             onClick={() => {
               setHoveredModelId(null);
               setIsSettingsOpen(!isSettingsOpen);
@@ -224,6 +284,7 @@ export default function App() {
           >
             <Settings className="w-3.5 h-3.5" />
           </button>
+        </div>
         </div>
       </div>
       </div>

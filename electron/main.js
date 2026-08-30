@@ -1,87 +1,82 @@
-const { app, BrowserWindow, screen, ipcMain, Tray, Menu, globalShortcut, nativeImage, desktopCapturer } = require('electron');
+const { app, BrowserWindow, screen, ipcMain, Tray, Menu, globalShortcut, nativeImage, session } = require('electron');
 const path = require('path');
+const { pathToFileURL } = require('url');
 const fs = require('fs');
 const { getAllInstalledAgentUsage, getLocalConfig, saveLocalConfig, probeCli, suggestCustomClis } = require('./scrapers');
 const { readJobActivity } = require('./handoff_status');
+const { runtimePath, ensureRuntimeDir, writePid, clearPid } = require('./runtime-state');
+const { activityFingerprint, quotaFingerprint, keepLastKnown } = require('./quota-state');
 
 let mainWindow = null;
 let tray = null;
 let pollInterval = null;
 let jobPollTimer = null;
 let cachedQuotaState = null;
+let usageRefreshPromise = null;
 let overlayMode = 'dock';
-const pidFile = path.join(__dirname, '..', 'notch.pid');
-
-try {
-  fs.appendFileSync(
-    path.join(__dirname, '..', 'electron_boot.log'),
-    `[boot] pid=${process.pid} capture=${process.env.NOTCH_CAPTURE || ''}\n`
-  );
-} catch (e) {}
-
-function writePid() {
-  try {
-    fs.writeFileSync(pidFile, String(process.pid), 'utf8');
-  } catch (e) {}
-}
-
-function clearPid() {
-  try {
-    fs.unlinkSync(pidFile);
-  } catch (e) {}
-}
+let overlayAnimation = null;
+const logFile = runtimePath('electron_boot.log');
 
 const OVERLAY = {
   dock: { width: 360, height: 620 },
-  settings: { width: 440, height: 640 }
+  settings: { width: 440, height: 640 },
+  // Collapsing tucks the full-size rail into the screen edge. Keeping the
+  // window footprint stable avoids a detached mini-window and visual jump.
+  collapsed: { width: 360, height: 620 }
 };
-
-function activityFingerprint(activity) {
-  if (!activity) return '';
-  const handoff = activity.handoff;
-  return `${activity.jobId || ''}:${activity.jobStatus || ''}:${activity.activeAgent || ''}:${handoff ? `${handoff.at}:${handoff.from}->${handoff.to}` : ''}`;
-}
-
-function quotaFingerprint(data) {
-  if (!data || !Array.isArray(data.models)) return '';
-  const models = data.models
-    .map((m) => `${m.id}:${m.ringPercent}:${m.quotaState}:${m.status}:${m.sessionUsedPercent}:${m.weeklyUsedPercent}`)
-    .join('|');
-  return `${models}|${activityFingerprint(data.jobActivity)}`;
-}
 
 function reduceMotionEnabled(cfg) {
   if (process.env.NOTCH_REDUCE_MOTION === '1') return true;
   return Boolean(cfg && cfg.reduceMotion);
 }
 
-function keepLastKnown(prev, next) {
-  if (!prev || !Array.isArray(prev.models) || !next || !Array.isArray(next.models)) return next;
-  const prevById = Object.fromEntries(prev.models.map((m) => [m.id, m]));
-  return {
-    ...next,
-    models: next.models.map((m) => {
-      const old = prevById[m.id];
-      if (!old) return m;
-      if (old.quotaState === 'known' && m.quotaState === 'unknown') {
-        return { ...old, lastError: m.sessionResetText || m.weeklyResetText };
-      }
-      return m;
-    })
-  };
+function quotaConfigFingerprint(config) {
+  return JSON.stringify({
+    enabledModels: config?.enabledModels || {},
+    customAgents: config?.customAgents || [],
+    alertThreshold: config?.alertThreshold
+  });
 }
 
 function snapOverlay(mode) {
-  overlayMode = mode === 'settings' ? 'settings' : 'dock';
+  overlayMode = Object.hasOwn(OVERLAY, mode) ? mode : 'dock';
   const size = OVERLAY[overlayMode];
   if (!mainWindow || mainWindow.isDestroyed()) return;
   const primaryDisplay = screen.getPrimaryDisplay();
   const { x: workX, y: workY, width: workWidth, height: workHeight } = primaryDisplay.workArea;
   const posX = Math.max(0, workX + workWidth - size.width);
   const posY = Math.max(0, workY + Math.round((workHeight - size.height) / 2));
+  const target = { x: posX, y: posY, width: size.width, height: size.height };
+  const start = mainWindow.getBounds();
+  if (overlayAnimation) clearInterval(overlayAnimation);
+  if (start.x === target.x && start.y === target.y && start.width === target.width && start.height === target.height) return;
+  const duration = reduceMotionEnabled(getLocalConfig()) ? 0 : 180;
+  if (!duration) {
+    mainWindow.setBounds(target);
+    return;
+  }
+
   mainWindow.setResizable(true);
-  mainWindow.setBounds({ x: posX, y: posY, width: size.width, height: size.height });
-  mainWindow.setResizable(false);
+  const startedAt = Date.now();
+  overlayAnimation = setInterval(() => {
+    if (!mainWindow || mainWindow.isDestroyed()) {
+      clearInterval(overlayAnimation);
+      overlayAnimation = null;
+      return;
+    }
+    const progress = Math.min(1, (Date.now() - startedAt) / duration);
+    const eased = 1 - ((1 - progress) ** 3);
+    const next = Object.fromEntries(
+      Object.keys(target).map((key) => [key, Math.round(start[key] + ((target[key] - start[key]) * eased))])
+    );
+    mainWindow.setBounds(next);
+    if (progress >= 1) {
+      clearInterval(overlayAnimation);
+      overlayAnimation = null;
+      mainWindow.setBounds(target);
+      mainWindow.setResizable(false);
+    }
+  }, 15);
 }
 
 // Ensure single instance lock
@@ -100,7 +95,11 @@ if (!gotTheLock) {
 function createOverlayWindow() {
   const primaryDisplay = screen.getPrimaryDisplay();
   const { x: workX, y: workY, width: workWidth, height: workHeight } = primaryDisplay.workArea;
-  const size = OVERLAY.dock;
+  const initialMode = getLocalConfig().collapsed ? 'collapsed' : 'dock';
+  const size = OVERLAY[initialMode];
+  overlayMode = initialMode;
+  const distIndex = path.join(__dirname, '../dist/index.html');
+  const distUrl = pathToFileURL(distIndex).href;
 
   const posX = Math.max(0, workX + workWidth - size.width);
   const posY = Math.max(0, workY + Math.round((workHeight - size.height) / 2));
@@ -122,13 +121,18 @@ function createOverlayWindow() {
       preload: path.join(__dirname, 'preload.js'),
       nodeIntegration: false,
       contextIsolation: true,
+      sandbox: true,
     }
+  });
+
+  mainWindow.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
+  mainWindow.webContents.on('will-navigate', (event, url) => {
+    if (url !== distUrl) event.preventDefault();
   });
 
   mainWindow.setAlwaysOnTop(true, 'screen-saver', 1);
   mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
 
-  const distIndex = path.join(__dirname, '../dist/index.html');
   mainWindow.loadFile(distIndex);
 
   mainWindow.webContents.on('did-finish-load', async () => {
@@ -172,23 +176,31 @@ function publishState(next) {
   }
 }
 
-async function refreshUsageData() {
-  try {
-    const liveData = attachActivity(await getAllInstalledAgentUsage());
-    const merged = keepLastKnown(cachedQuotaState, liveData);
-    merged.jobActivity = liveData.jobActivity;
-    merged.handoff = liveData.handoff;
-    merged.reduceMotion = liveData.reduceMotion;
-    if (cachedQuotaState && quotaFingerprint(cachedQuotaState) === quotaFingerprint(merged)) {
-      cachedQuotaState = { ...merged, lastUpdated: liveData.lastUpdated };
+async function refreshUsageData({ force = false } = {}) {
+  if (usageRefreshPromise) return usageRefreshPromise;
+  usageRefreshPromise = (async () => {
+    try {
+      const liveData = attachActivity(await getAllInstalledAgentUsage({ force }));
+      const merged = keepLastKnown(cachedQuotaState, liveData);
+      merged.jobActivity = liveData.jobActivity;
+      merged.handoff = liveData.handoff;
+      merged.reduceMotion = liveData.reduceMotion;
+      if (cachedQuotaState && quotaFingerprint(cachedQuotaState) === quotaFingerprint(merged)) {
+        cachedQuotaState = { ...merged, lastUpdated: liveData.lastUpdated };
+        scheduleJobPoll(merged.jobActivity);
+        return cachedQuotaState;
+      }
+      publishState(merged);
       scheduleJobPoll(merged.jobActivity);
-      return;
+      return merged;
+    } catch (err) {
+      console.error('[Agent Notch] Error refreshing quota:', err);
+      return cachedQuotaState;
+    } finally {
+      usageRefreshPromise = null;
     }
-    publishState(merged);
-    scheduleJobPoll(merged.jobActivity);
-  } catch (err) {
-    console.error('[Agent Notch] Error refreshing quota:', err);
-  }
+  })();
+  return usageRefreshPromise;
 }
 
 function refreshJobActivity() {
@@ -229,7 +241,7 @@ function createTray() {
     {
       label: 'Refresh Quotas Now',
       click: () => {
-        refreshUsageData();
+        refreshUsageData({ force: true });
       }
     },
     {
@@ -283,10 +295,7 @@ function createTray() {
 
 // IPC Handlers
 ipcMain.handle('get-usage-data', async () => {
-  if (!cachedQuotaState) {
-    cachedQuotaState = attachActivity(await getAllInstalledAgentUsage());
-  }
-  return cachedQuotaState;
+  return cachedQuotaState || refreshUsageData();
 });
 
 ipcMain.handle('get-config', () => {
@@ -294,9 +303,24 @@ ipcMain.handle('get-config', () => {
 });
 
 ipcMain.handle('save-config', async (_event, newConfig) => {
-  saveLocalConfig(newConfig);
-  await refreshUsageData();
-  return { success: true };
+  try {
+    const previous = getLocalConfig();
+    const config = saveLocalConfig(newConfig);
+    if (quotaConfigFingerprint(previous) !== quotaConfigFingerprint(config)) {
+      await refreshUsageData({ force: true });
+    } else if (cachedQuotaState) {
+      publishState({
+        ...cachedQuotaState,
+        config,
+        reduceMotion: reduceMotionEnabled(config)
+      });
+    } else {
+      await refreshUsageData();
+    }
+    return { success: true, config };
+  } catch (err) {
+    return { success: false, message: err.message || String(err) };
+  }
 });
 
 ipcMain.handle('trigger-handoff', () => {
@@ -327,7 +351,7 @@ ipcMain.on('set-ignore-mouse-events', (_event, ignore) => {
 async function runCaptureIfRequested() {
   const dir = String(process.env.NOTCH_CAPTURE || '').trim();
   try {
-    fs.appendFileSync(path.join(__dirname, '..', 'electron_boot.log'), `[capture] dir=${dir || '(empty)'}\n`);
+    fs.appendFileSync(logFile, `[capture] dir=${dir || '(empty)'}\n`);
   } catch (e) {}
   if (!dir) return;
   fs.mkdirSync(dir, { recursive: true });
@@ -356,7 +380,7 @@ async function runCaptureIfRequested() {
         fs.writeFileSync(path.join(dir, `page-${n}.png`), page.toPNG());
       }
     } catch (e) {
-      try { fs.appendFileSync(path.join(__dirname, '..', 'electron_boot.log'), `[capture] page ${n} ${e.message}\n`); } catch (err) {}
+      try { fs.appendFileSync(logFile, `[capture] page ${n} ${e.message}\n`); } catch (err) {}
     }
     if (i < frames - 1) {
       await new Promise((resolve) => setTimeout(resolve, interval));
@@ -366,8 +390,15 @@ async function runCaptureIfRequested() {
   if (process.env.NOTCH_CAPTURE_QUIT === '1') app.quit();
 }
 
-app.whenReady().then(() => {
-  writePid();
+if (gotTheLock) app.whenReady().then(() => {
+  try {
+    ensureRuntimeDir();
+    fs.appendFileSync(logFile, `[boot] pid=${process.pid} capture=${process.env.NOTCH_CAPTURE || ''}\n`);
+    writePid(process.pid);
+  } catch (err) {
+    console.error('[Agent Notch] Could not write runtime state:', err);
+  }
+  session.defaultSession.setPermissionRequestHandler((_webContents, _permission, callback) => callback(false));
   createOverlayWindow();
   createTray();
 
@@ -383,28 +414,29 @@ app.whenReady().then(() => {
     }
   });
 
-  pollInterval = setInterval(refreshUsageData, 60000);
+  pollInterval = setInterval(() => refreshUsageData(), 60000);
   scheduleJobPoll(null);
 });
 
 process.on('uncaughtException', (err) => {
   try {
-    fs.appendFileSync(path.join(__dirname, '..', 'electron_boot.log'), `[uncaught] ${err && err.stack ? err.stack : err}\n`);
+    fs.appendFileSync(logFile, `[uncaught] ${err && err.stack ? err.stack : err}\n`);
   } catch (e) {}
 });
 process.on('unhandledRejection', (err) => {
   try {
-    fs.appendFileSync(path.join(__dirname, '..', 'electron_boot.log'), `[unhandled] ${err && err.stack ? err.stack : err}\n`);
+    fs.appendFileSync(logFile, `[unhandled] ${err && err.stack ? err.stack : err}\n`);
   } catch (e) {}
 });
 
-app.on('will-quit', () => {
+if (gotTheLock) app.on('will-quit', () => {
   globalShortcut.unregisterAll();
   if (pollInterval) clearInterval(pollInterval);
   if (jobPollTimer) clearTimeout(jobPollTimer);
-  clearPid();
+  if (overlayAnimation) clearInterval(overlayAnimation);
+  clearPid(process.pid);
 });
 
-app.on('window-all-closed', () => {
+if (gotTheLock) app.on('window-all-closed', () => {
   // Keep running in system tray
 });

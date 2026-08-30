@@ -4,12 +4,10 @@ const https = require('https');
 const os = require('os');
 const { URL } = require('url');
 const { execFile } = require('child_process');
+const { DEFAULT_CONFIG, getLocalConfig, saveLocalConfig } = require('./config');
 
 const homeDir = os.homedir();
-const configPath = path.join(__dirname, '..', 'notch_config.json');
 
-const CLAUDE_CLIENT_ID = '9d1c250a-e61b-44d9-88ed-5944d1962f5e';
-const CLAUDE_TOKEN_URL = 'https://platform.claude.com/v1/oauth/token';
 const CLAUDE_USAGE_URL = 'https://api.anthropic.com/api/oauth/usage';
 const CLAUDE_OAUTH_BETA = 'oauth-2025-04-20';
 const CODEX_USAGE_URL = 'https://chatgpt.com/backend-api/wham/usage';
@@ -17,40 +15,10 @@ const GOOGLE_TOKEN_URL = 'https://oauth2.googleapis.com/token';
 const CLOUD_CODE_URL = 'https://cloudcode-pa.googleapis.com/v1internal';
 const MAX_BODY_BYTES = 1_000_000;
 
-const DEFAULT_CONFIG = {
-  enabledModels: {
-    codex: true,
-    claude: true,
-    gemini: true,
-    cursor: true,
-    opencode: true,
-    grok: true
-  },
-  customAgents: [],
-  alertThreshold: 80,
-  reduceMotion: false
-};
-
-let claudeRefreshLock = Promise.resolve();
 let googleAccessCache = { token: null, expiresAt: 0 };
-
-function getLocalConfig() {
-  try {
-    if (fs.existsSync(configPath)) {
-      return JSON.parse(fs.readFileSync(configPath, 'utf8'));
-    }
-  } catch (e) {}
-  return DEFAULT_CONFIG;
-}
-
-function saveLocalConfig(cfg) {
-  try {
-    fs.writeFileSync(configPath, JSON.stringify(cfg, null, 2), 'utf8');
-    return true;
-  } catch (e) {
-    return false;
-  }
-}
+const readerCache = new Map();
+const READER_POLL_MS = 60 * 1000;
+const READER_MAX_BACKOFF_MS = 5 * 60 * 1000;
 
 function readJson(filePath) {
   return JSON.parse(fs.readFileSync(filePath, 'utf8'));
@@ -100,14 +68,16 @@ function coercePercent(value) {
   return Math.round(number);
 }
 
-function quotaStatus(percent) {
+function quotaStatus(percent, alertThreshold = 80) {
   if (percent == null) return 'unknown';
-  if (percent >= 80) return 'critical';
-  if (percent >= 50) return 'warning';
+  const critical = Math.max(50, Math.min(100, Number(alertThreshold) || 80));
+  const warning = Math.max(0, critical - 30);
+  if (percent >= critical) return 'critical';
+  if (percent >= warning) return 'warning';
   return 'normal';
 }
 
-function attachRing(model) {
+function attachRing(model, alertThreshold = 80) {
   const session = model.sessionUsedPercent;
   const weekly = model.weeklyUsedPercent;
   let ring = null;
@@ -117,8 +87,9 @@ function attachRing(model) {
     else if (weekly != null) ring = weekly;
   }
   model.ringPercent = ring;
+  model.alertThreshold = Math.max(50, Math.min(100, Number(alertThreshold) || 80));
   if (model.quotaState === 'known') {
-    model.status = quotaStatus(ring);
+    model.status = quotaStatus(ring, alertThreshold);
   }
   return model;
 }
@@ -133,6 +104,8 @@ function detectedCard({
   weeklyUsedPercent = null,
   sessionResetText = 'Quota unknown',
   weeklyResetText = 'Quota unknown',
+  sessionLabel = 'Current session',
+  weeklyLabel = 'Weekly',
   status = quotaState
 }) {
   return attachRing({
@@ -146,6 +119,8 @@ function detectedCard({
     weeklyUsedPercent,
     sessionResetText,
     weeklyResetText,
+    sessionLabel,
+    weeklyLabel,
     status
   });
 }
@@ -229,63 +204,6 @@ function accessExpired(expiresAt, skewMs = 60_000) {
   return ms <= Date.now() + skewMs;
 }
 
-function persistClaudeCredentials(credPath, cred) {
-  const tmp = `${credPath}.tmp`;
-  fs.writeFileSync(tmp, `${JSON.stringify(cred, null, 2)}\n`, { encoding: 'utf8', mode: 0o600 });
-  try {
-    fs.renameSync(tmp, credPath);
-  } catch (e) {
-    fs.copyFileSync(tmp, credPath);
-    fs.unlinkSync(tmp);
-  }
-}
-
-async function refreshClaudeAccess(credPath, packed) {
-  const run = async () => {
-    const latest = readClaudeCredentials(credPath) || packed;
-    const body = new URLSearchParams({
-      grant_type: 'refresh_token',
-      refresh_token: latest.refreshToken,
-      client_id: CLAUDE_CLIENT_ID
-    }).toString();
-    const res = await httpsRequest({
-      method: 'POST',
-      url: CLAUDE_TOKEN_URL,
-      headers: {
-        'Content-Type': 'application/x-www-form-urlencoded',
-        Accept: 'application/json',
-        'User-Agent': 'claude-cli/2.1.246 (external, cli)'
-      },
-      body,
-      timeoutMs: 15000
-    });
-    if (res.status !== 200 || !res.json || !res.json.access_token) {
-      const err = new Error('claude refresh failed');
-      err.status = res.status;
-      err.grantInvalid = res.status === 400;
-      throw err;
-    }
-    const now = Date.now();
-    const expiresIn = Number(res.json.expires_in) || 28800;
-    latest.oauth.accessToken = res.json.access_token;
-    if (res.json.refresh_token) latest.oauth.refreshToken = res.json.refresh_token;
-    latest.oauth.expiresAt = now + expiresIn * 1000;
-    if (typeof res.json.refresh_token_expires_in === 'number') {
-      latest.oauth.refreshTokenExpiresAt = now + res.json.refresh_token_expires_in * 1000;
-    }
-    if (typeof res.json.scope === 'string' && res.json.scope.trim()) {
-      latest.oauth.scopes = res.json.scope.split(/\s+/);
-    }
-    latest.cred.claudeAiOauth = latest.oauth;
-    persistClaudeCredentials(credPath, latest.cred);
-    return latest.oauth.accessToken;
-  };
-
-  const queued = claudeRefreshLock.then(run, run);
-  claudeRefreshLock = queued.then(() => undefined, () => undefined);
-  return queued;
-}
-
 function parseClaudeWindows(payload) {
   const session = { percent: null, reset: null };
   const weekly = { percent: null, reset: null };
@@ -363,14 +281,19 @@ async function getClaudeUsage() {
     }
 
     if (!packed.accessToken || accessExpired(packed.expiresAt)) {
-      packed = { ...packed, accessToken: await refreshClaudeAccess(credPath, packed) };
+      return detectedCard({
+        id: 'claude',
+        name,
+        provider,
+        icon: 'claude',
+        quotaState: 'expired',
+        sessionResetText: 'Open Claude Code to refresh sign-in',
+        weeklyResetText: 'OAuth token expired',
+        status: 'expired'
+      });
     }
 
-    let res = await fetchClaudeUsage(packed.accessToken);
-    if (res.status === 401 || res.status === 403) {
-      packed = { ...packed, accessToken: await refreshClaudeAccess(credPath, packed) };
-      res = await fetchClaudeUsage(packed.accessToken);
-    }
+    const res = await fetchClaudeUsage(packed.accessToken);
     if (res.status === 401 || res.status === 403) {
       return detectedCard({
         id: 'claude',
@@ -418,20 +341,21 @@ async function getClaudeUsage() {
       quotaState: 'known',
       sessionUsedPercent: session.percent,
       weeklyUsedPercent: weekly.percent,
+      sessionLabel: '5h session',
+      weeklyLabel: 'Weekly',
       sessionResetText: session.reset || (session.percent == null ? 'No session window' : 'Active'),
       weeklyResetText: weekly.reset || (weekly.percent == null ? 'No weekly window' : 'Active')
     });
   } catch (err) {
-    const expired = err && (err.grantInvalid || err.status === 400);
     return detectedCard({
       id: 'claude',
       name,
       provider,
       icon: 'claude',
-      quotaState: expired ? 'expired' : 'unknown',
-      sessionResetText: expired ? 'Sign in: claude auth login' : 'Quota unknown',
-      weeklyResetText: expired ? 'Refresh token invalid' : 'Claude usage read failed',
-      status: expired ? 'expired' : 'unknown'
+      quotaState: 'unknown',
+      sessionResetText: 'Quota unknown',
+      weeklyResetText: 'Claude usage read failed',
+      status: 'unknown'
     });
   }
 }
@@ -529,6 +453,8 @@ async function getCodexUsage() {
       quotaState: 'known',
       sessionUsedPercent: sessionUsed,
       weeklyUsedPercent: weeklyUsed,
+      sessionLabel: '5h session',
+      weeklyLabel: 'Weekly',
       sessionResetText: formatResetAt(primary.reset_at) || (sessionUsed == null ? 'No session window' : 'Active'),
       weeklyResetText: formatResetAt(secondary.reset_at) || (weeklyUsed == null ? 'No weekly window' : 'Active')
     });
@@ -769,6 +695,8 @@ async function getGeminiUsage() {
       quotaState: 'known',
       sessionUsedPercent: session ? session.used : null,
       weeklyUsedPercent: weekly ? weekly.used : null,
+      sessionLabel: '5h session',
+      weeklyLabel: 'Weekly',
       sessionResetText: (session && formatResetAt(session.reset)) || (session ? 'Active' : 'No session window'),
       weeklyResetText: (weekly && formatResetAt(weekly.reset)) || (weekly ? 'Active' : 'No weekly window')
     });
@@ -888,6 +816,8 @@ async function getCursorUsage() {
       quotaState: 'known',
       sessionUsedPercent: auto,
       weeklyUsedPercent: total,
+      sessionLabel: 'Auto usage',
+      weeklyLabel: 'Billing period',
       sessionResetText: cycle || (auto == null ? 'No session window' : 'Billing cycle'),
       weeklyResetText: cycle || (total == null ? 'No plan window' : 'Billing cycle')
     });
@@ -999,6 +929,8 @@ async function getOpenCodeUsage() {
       quotaState: 'known',
       sessionUsedPercent: session ? session.percent : null,
       weeklyUsedPercent: plan ? plan.percent : null,
+      sessionLabel: 'Rolling window',
+      weeklyLabel: 'Plan period',
       sessionResetText: (session && formatResetAt(session.reset)) || (session ? 'Active' : 'No session window'),
       weeklyResetText: (plan && formatResetAt(plan.reset)) || (plan ? 'Active' : 'No plan window')
     });
@@ -1145,6 +1077,8 @@ async function getGrokUsage() {
       quotaState: 'known',
       sessionUsedPercent: sessionUsed,
       weeklyUsedPercent: weekly,
+      sessionLabel: 'Product usage',
+      weeklyLabel: 'Billing period',
       sessionResetText: sessionUsed == null ? 'No session window' : 'Active',
       weeklyResetText: weeklyReset || (weekly == null ? 'No weekly window' : 'Active')
     });
@@ -1325,33 +1259,85 @@ async function suggestCustomClis(config) {
   return results;
 }
 
-async function getAllInstalledAgentUsage() {
+const BUILTIN_READERS = [
+  { id: 'codex', name: 'Codex', provider: 'OpenAI', read: getCodexUsage },
+  { id: 'claude', name: 'Claude Code', provider: 'Anthropic', read: getClaudeUsage },
+  { id: 'gemini', name: 'Antigravity', provider: 'Google', read: getGeminiUsage },
+  { id: 'cursor', name: 'Cursor', provider: 'Cursor', read: getCursorUsage },
+  { id: 'opencode', name: 'OpenCode', provider: 'OpenCode', read: getOpenCodeUsage },
+  { id: 'grok', name: 'Grok', provider: 'xAI', read: getGrokUsage }
+];
+
+function cloneResult(value) {
+  return value && typeof value === 'object' ? { ...value } : value;
+}
+
+function readerDelay(failures) {
+  return Math.min(READER_POLL_MS * (2 ** Math.max(0, failures - 1)), READER_MAX_BACKOFF_MS);
+}
+
+function readWithCache(entry, { force = false, now = Date.now() } = {}) {
+  const existing = readerCache.get(entry.id) || { result: null, failures: 0, nextPollAt: 0, inFlight: null };
+  if (existing.inFlight) return existing.inFlight.then(cloneResult);
+  if (!force && existing.nextPollAt > now) return Promise.resolve(cloneResult(existing.result));
+
+  const inFlight = Promise.resolve()
+    .then(() => entry.read())
+    .then((raw) => {
+      const attemptedAt = new Date(now).toISOString();
+      const result = raw ? { ...raw, attemptedAt } : null;
+      const available = result && result.quotaState === 'known';
+      if (available) result.observedAt = attemptedAt;
+      const failures = available ? 0 : existing.failures + 1;
+      const delay = available ? READER_POLL_MS : readerDelay(failures);
+      readerCache.set(entry.id, { result, failures, nextPollAt: now + delay, inFlight: null });
+      return cloneResult(result);
+    })
+    .catch(() => {
+      const attemptedAt = new Date(now).toISOString();
+      const failures = existing.failures + 1;
+      const result = existing.result
+        ? { ...existing.result, quotaState: 'unknown', status: 'unknown', attemptedAt }
+        : null;
+      readerCache.set(entry.id, {
+        result,
+        failures,
+        nextPollAt: now + readerDelay(failures),
+        inFlight: null
+      });
+      return cloneResult(result);
+    });
+  readerCache.set(entry.id, { ...existing, inFlight });
+  return inFlight;
+}
+
+async function getAllInstalledAgentUsage({ force = false, now = Date.now() } = {}) {
   const config = getLocalConfig();
   const enabledMap = config.enabledModels || DEFAULT_CONFIG.enabledModels;
   const customAgents = Array.isArray(config.customAgents) ? config.customAgents : [];
-
-  const results = await Promise.all([
-    getCodexUsage(),
-    getClaudeUsage(),
-    getGeminiUsage(),
-    getCursorUsage(),
-    getOpenCodeUsage(),
-    getGrokUsage(),
-    ...customAgents.map((agent) => getCustomUsage(agent))
-  ]);
+  const customReaders = customAgents.map((agent) => ({
+    id: agent.id,
+    name: customDisplayName(agent),
+    provider: agent.provider || 'Custom',
+    read: () => getCustomUsage(agent)
+  }));
+  const enabledReaders = [...BUILTIN_READERS, ...customReaders]
+    .filter((entry) => enabledMap[entry.id] !== false);
+  const results = await Promise.all(
+    enabledReaders.map((entry) => readWithCache(entry, { force, now }))
+  );
 
   const allDetected = results.filter(Boolean);
-  const filteredModels = allDetected.filter((m) => enabledMap[m.id] !== false);
+  const filteredModels = allDetected.map((model) => attachRing({ ...model }, config.alertThreshold));
+  const allDetectedIds = [
+    ...BUILTIN_READERS.map(({ id, name, provider }) => ({ id, name, provider, custom: false })),
+    ...customReaders.map(({ id, name, provider }) => ({ id, name, provider, custom: true }))
+  ];
 
   return {
     activeModel: filteredModels[0]?.id || 'codex',
     models: filteredModels,
-    allDetectedIds: allDetected.map((m) => ({
-      id: m.id,
-      name: m.name,
-      provider: m.provider,
-      custom: String(m.id).startsWith('custom_')
-    })),
+    allDetectedIds,
     config,
     lastUpdated: new Date().toISOString()
   };
@@ -1362,5 +1348,12 @@ module.exports = {
   getLocalConfig,
   saveLocalConfig,
   probeCli,
-  suggestCustomClis
+  suggestCustomClis,
+  _test: {
+    attachRing,
+    coercePercent,
+    quotaStatus,
+    readWithCache,
+    resetReaderCache: () => readerCache.clear()
+  }
 };
