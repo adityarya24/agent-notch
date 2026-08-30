@@ -14,12 +14,13 @@ let jobPollTimer = null;
 let cachedQuotaState = null;
 let usageRefreshPromise = null;
 let overlayMode = 'dock';
+let overlayAnimation = null;
 const logFile = runtimePath('electron_boot.log');
 
 const OVERLAY = {
   dock: { width: 360, height: 620 },
   settings: { width: 440, height: 640 },
-  collapsed: { width: 26, height: 64 }
+  collapsed: { width: 60, height: 36 }
 };
 
 function reduceMotionEnabled(cfg) {
@@ -43,9 +44,37 @@ function snapOverlay(mode) {
   const { x: workX, y: workY, width: workWidth, height: workHeight } = primaryDisplay.workArea;
   const posX = Math.max(0, workX + workWidth - size.width);
   const posY = Math.max(0, workY + Math.round((workHeight - size.height) / 2));
+  const target = { x: posX, y: posY, width: size.width, height: size.height };
+  const start = mainWindow.getBounds();
+  if (overlayAnimation) clearInterval(overlayAnimation);
+  if (start.x === target.x && start.y === target.y && start.width === target.width && start.height === target.height) return;
+  const duration = reduceMotionEnabled(getLocalConfig()) ? 0 : 180;
+  if (!duration) {
+    mainWindow.setBounds(target);
+    return;
+  }
+
   mainWindow.setResizable(true);
-  mainWindow.setBounds({ x: posX, y: posY, width: size.width, height: size.height });
-  mainWindow.setResizable(false);
+  const startedAt = Date.now();
+  overlayAnimation = setInterval(() => {
+    if (!mainWindow || mainWindow.isDestroyed()) {
+      clearInterval(overlayAnimation);
+      overlayAnimation = null;
+      return;
+    }
+    const progress = Math.min(1, (Date.now() - startedAt) / duration);
+    const eased = 1 - ((1 - progress) ** 3);
+    const next = Object.fromEntries(
+      Object.keys(target).map((key) => [key, Math.round(start[key] + ((target[key] - start[key]) * eased))])
+    );
+    mainWindow.setBounds(next);
+    if (progress >= 1) {
+      clearInterval(overlayAnimation);
+      overlayAnimation = null;
+      mainWindow.setBounds(target);
+      mainWindow.setResizable(false);
+    }
+  }, 15);
 }
 
 // Ensure single instance lock
@@ -402,6 +431,7 @@ if (gotTheLock) app.on('will-quit', () => {
   globalShortcut.unregisterAll();
   if (pollInterval) clearInterval(pollInterval);
   if (jobPollTimer) clearTimeout(jobPollTimer);
+  if (overlayAnimation) clearInterval(overlayAnimation);
   clearPid(process.pid);
 });
 

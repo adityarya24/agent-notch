@@ -156,7 +156,7 @@ export default function App() {
           onClick={() => setCollapsed(false)}
           title="Expand Agent Notch"
           aria-label="Expand Agent Notch"
-          className="w-[22px] h-12 rounded-l-full border-l-2 border-y-2 border-[#3f3f46] bg-[#09090b]/98 text-neutral-400 shadow-xl shadow-black/90 flex items-center justify-center transition-colors hover:border-emerald-400/70 hover:text-emerald-300"
+          className="w-[58px] h-8 rounded-l-full border-l-2 border-y-2 border-[#3f3f46] bg-[#09090b]/98 text-neutral-400 shadow-xl shadow-black/90 flex items-center justify-center transition-all duration-200 hover:border-emerald-400/70 hover:text-emerald-300"
         >
           <ChevronLeft className="w-3.5 h-3.5" />
         </button>
@@ -197,8 +197,9 @@ export default function App() {
           onClick={() => setCollapsed(true)}
           title="Collapse Agent Notch"
           aria-label="Collapse Agent Notch"
-          className="absolute -left-3 top-1/2 -translate-y-1/2 w-6 h-11 rounded-l-xl border-l border-y border-[#3f3f46] bg-[#09090b] text-neutral-400 shadow-lg shadow-black/70 z-50 flex items-center justify-center transition-colors hover:border-emerald-400/70 hover:text-emerald-300"
+          className={`absolute -left-8 top-1/2 -translate-y-1/2 w-7 h-7 rounded-full border border-[#3f3f46] bg-[#09090b] text-neutral-400 shadow-lg shadow-black/70 z-50 flex items-center justify-center transition-all duration-200 hover:border-emerald-400/70 hover:text-emerald-300 ${hoveredModel || isSettingsOpen ? 'opacity-0 pointer-events-none' : 'opacity-100'}`}
         >
+          <span className="absolute -right-1.5 w-1.5 h-px bg-[#3f3f46]" aria-hidden="true" />
           <ChevronRight className="w-3.5 h-3.5" />
         </button>
 
