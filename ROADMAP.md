@@ -48,6 +48,7 @@ MindSync dispatch has preemptive readers and headroom ranking. Notch stays a spe
 ## Phase 4: System polish — partial
 
 - [x] System tray + `Ctrl+Shift+U`.
+- [x] Persistent edge-tuck collapse with an in-place reveal grip.
 - [x] Windows autostart via `notch autostart`.
 - [x] Reliable `notch status` / restart via per-user PID state plus process ownership discovery.
 - [ ] Multi-monitor pick (primary vs secondary).
