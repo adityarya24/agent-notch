@@ -1,30 +1,83 @@
-# Agent Notch
+# ⚡ Agent Notch
 
-Right-edge desktop HUD for live AI coding-agent quotas. Windows-first (tray, autostart, `notch` CLI). Hover a ring for session + weekly windows. MindSync handoffs show as status only — Notch does not transfer jobs.
+<p align="center">
+  <strong>Ambient right-edge desktop HUD for live AI coding-agent quotas and MindSync handoffs.</strong><br>
+  <em>Windows-first • Electron + React 19 + Tailwind CSS v4 • Zero telemetry • Pure spectator</em>
+</p>
 
-Built with Electron, React, Vite, and Tailwind CSS v4.
+<p align="center">
+  <img src="https://img.shields.io/badge/Platform-Windows%2010%2B-blue?style=flat-square&logo=windows" alt="Platform">
+  <img src="https://img.shields.io/badge/Node.js-%3E%3D18.0.0-green?style=flat-square&logo=node.js" alt="Node.js">
+  <img src="https://img.shields.io/badge/Stack-Electron%20%7C%20React%2019%20%7C%20Tailwind%20v4-61dafb?style=flat-square" alt="Stack">
+  <img src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square" alt="License">
+</p>
 
-## What is live (Phase 2 wrap)
+---
 
-Account-level rings. Provider name on the dock, not a model slug. Unknown quota is a dash — never a fake percent.
+## 🎯 Overview
 
-| Dock | Source |
-| :--- | :--- |
-| Codex | ChatGPT WHAM (5h + weekly) |
-| Claude Code | `~/.claude/.credentials.json` + Anthropic OAuth usage |
-| Grok | Grok CLI session + billing credits |
-| Gemini / Antigravity | Official Antigravity CLI vault + quota summary |
-| Cursor | Cursor IDE session token + period usage |
-| OpenCode Go | Go subscription usage only (not BYOK OpenCode) |
-| Custom CLI | PATH detect; dash unless you supply a JSON command or a manual snapshot |
+**Agent Notch** is an ultra-lightweight, always-on-top ambient dock snapped to the right edge of your screen. It provides instant visibility into live token quotas, rate limits, and multi-agent task handoffs across your local AI engineering toolchain.
 
-Ring colors: green under 50%, amber 50–80%, red 80%+. No pulse. Transparent pixels click through. Settings gear opens a compact drawer (toggle CLIs, add custom).
+- **Account-Level Quota Rings**: Real-time session and weekly usage percentages at a glance.
+- **Strictly Grounded**: Never estimates or shows fake percentages. Unknown or unauthenticated quotas display as `—` or `login`.
+- **Zero-Lag Click-Through**: Transparent overlay pixels automatically forward all mouse clicks and scrolls to background windows.
+- **MindSync Integration**: Ambient status indicators and brief, non-intrusive handoff animations (`from → to (reason)`) without touching job dispatch.
+- **Local & Private**: Reads credentials directly from local environment paths and official CLI vaults. Zero telemetry, zero external tracking.
 
-If a MindSync job is running, the current agent gets a small emerald dot and a light glow — the quota ring itself does not change. A handoff plays once as `codex → grok (quota exhausted)` for a couple of seconds, then settles. No job data means no indicator (no guess). Gear → **Handoff animation** off (or `NOTCH_REDUCE_MOTION=1`) keeps a static glow. Custom CLIs with no MindSync adapter stay quiet.
+---
 
-## Install
+## 📊 Supported Providers & Quota Adapters
 
-Node.js 18+. This is an Electron app, so the pip analog is npm (not pip).
+| Provider / Ring | Monitored Windows | Data Source & Detection |
+| :--- | :--- | :--- |
+| **OpenAI Codex** | 5h Session + Weekly | ChatGPT WHAM usage endpoint (`~/.codex/` session / cookies) |
+| **Claude Code** | Session + 5h Window | Official Anthropic OAuth usage API (`~/.claude/.credentials.json`) |
+| **Gemini / Antigravity** | Quota Summary / Limits | Official Antigravity CLI token vault & Cloud Code usage API |
+| **Cursor** | Monthly Period Usage | Cursor IDE local state (`state.vscdb` / session token) |
+| **Grok CLI** | Session + Billing Credits | Grok CLI local configuration & billing endpoint |
+| **OpenCode Go** | Go Subscription Usage | OpenCode Go plan quota (excludes BYOK local engines) |
+| **Custom CLIs** | Dynamic / Custom | Automatic PATH detection; JSON stdout reader or manual snapshot |
+
+---
+
+## 🖥️ Visual HUD Features
+
+```
+          [ Screen Edge ]
+  ┌─────────────────────────┐
+  │  (⚙️ Settings Drawer)   │
+  │                         │   ┌──────┐
+  │  Claude Code            │───│ (92%)│ 🔴 Critical (≥80%)
+  │  Session: [████████--]  │   ├──────┤
+  │  Weekly:  [████------]  │───│ (45%)│ 🟢 Normal (<50%)
+  │  Resets in 1h 24m       │   ├──────┤
+  │                         │───│ (65%)│ 🟡 Warning (50-80%)
+  │  ● Active: Satyaki      │   ├──────┤
+  │  codex → grok (quota)   │───│ ( — )│ ⚪ Unknown / Unconfigured
+  └─────────────────────────┘   └──────┘
+```
+
+- **Color-Coded Status Rings**:
+  - 🟢 **Normal (< 50%)**: Healthy quota headroom.
+  - 🟡 **Warning (50% – 80%)**: Approaching session threshold.
+  - 🔴 **Critical (80%+)**: Imminent rate-limit window.
+- **Hover Popover Cards**: Detailed dual-meter breakdown (Session vs. Weekly/Monthly) with exact humanized reset countdowns (e.g. *“Resets in 2h 15m”*).
+- **MindSync Active Agent Glow**: When a MindSync job is actively running, the assigned agent's ring receives a subtle emerald dot and breathing background glow.
+- **One-Shot Handoff Banners**: When tasks transition between agents, a brief 2–3s banner plays once (e.g. `codex → grok (quota exhausted)`), then quietly settles.
+
+---
+
+## 🚀 Quick Start & Installation
+
+### Option 1: One-Click Windows Install (Recommended)
+
+Run via PowerShell (User-level, no admin required):
+```powershell
+irm https://raw.githubusercontent.com/adityarya24/agent-notch/main/install.ps1 | iex
+```
+*Or clone the repository and double-click `install.bat`.*
+
+### Option 2: Global NPM Install
 
 ```bash
 npm i -g github:adityarya24/agent-notch
@@ -32,47 +85,99 @@ notch
 notch autostart
 ```
 
-One-shot without a global install:
+### Option 3: Run Once via NPX
 
 ```bash
 npx github:adityarya24/agent-notch
 ```
 
-Private repo: GitHub auth is required. After it is public those commands work as-is.
+### Option 4: Local Development Clone
 
-From a clone (dev): `npm install` then `npm link` then `notch`. Windows double-click: `install.bat`. After pulling code: `npm run build` then `notch` (that **shows** the HUD if it is already running — it does not kill it). Use `notch restart` only when you mean to relaunch.
+```bash
+git clone https://github.com/adityarya24/agent-notch.git
+cd agent-notch
+npm install
+npm run build
+npm link
+notch
+```
 
-### Antigravity / Gemini refresh
+---
 
-Quota rings work from local tokens. Google OAuth **refresh** for Antigravity needs a client id/secret. Copy `.env.example` to `.env` (gitignored) and set `MINDSYNC_ANTIGRAVITY_CLIENT_ID` / `MINDSYNC_ANTIGRAVITY_CLIENT_SECRET` — same names as MindSync. `NOTCH_ANTIGRAVITY_CLIENT_*` aliases also work. Missing keys → Gemini shows a dash when the access token expires. Never commit `.env`.
+## ⌨️ CLI Reference
 
-Glow demo (no quota burn): `notch smoke` or `npm run smoke`. Watch the right edge ~40s. Clear leftovers: `notch smoke --clear`.
-
-## CLI
+Manage Agent Notch from any terminal via the `notch` command:
 
 | Command | Description |
 | :--- | :--- |
-| `notch` / `notch start` | Start the HUD, or show it if it is already running |
-| `notch stop` | Quit |
-| `notch restart` | Stop + start |
-| `notch status` | Running or not |
-| `notch autostart` | Windows logon |
-| `notch disable-startup` | Remove logon launch |
-| `notch smoke` | Glow/handoff demo on the live HUD (does not kill Notch) |
-| `notch help` | Command list |
+| `notch` / `notch start` | Start the HUD, or bring it to the foreground if already running |
+| `notch stop` / `notch kill` | Safely terminate the HUD process |
+| `notch restart` | Perform a clean stop and restart |
+| `notch status` | Check process status and background PID |
+| `notch autostart` | Register Agent Notch in Windows Startup (logon launch) |
+| `notch disable-startup` | Remove Agent Notch from Windows Startup |
+| `notch smoke` | Run an end-to-end glow & handoff demo on the live HUD (0 quota burn) |
+| `notch smoke --clear` | Clean up leftover test artifacts from smoke runs |
+| `notch help` | Display available CLI commands |
 
-Hotkey **Ctrl+Shift+U** hides or shows the HUD **while it is running**. After Quit (tray or `notch stop`) the hotkey is dead — run `notch` again. Tray icon toggles the same way.
+> [!NOTE]
+> **Hotkey**: Press <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>U</kbd> to toggle HUD visibility while running. (Note: Hotkey toggles visibility of the active instance; if the process is stopped via `notch stop`, launch it again using `notch`).
 
-## Custom CLI
+---
 
-Gear → add a display name (required) and optionally a binary on PATH. Quota stays a dash unless you set a manual snapshot or a command that prints:
+## ⚙️ Configuration & Environment
 
-```json
-{"sessionUsedPercent":12,"weeklyUsedPercent":40}
-```
+### Antigravity / Gemini Token Refresh (Optional)
 
-## Not in this app
+Quota scraping works out-of-the-box using local credentials. If automatic OAuth token refresh for Google Antigravity is required:
 
-- Job transfer / successor pick — that is MindSync dispatch.
-- Packaged NSIS installer and multi-monitor picker — later (`install.bat` is the current one-click).
-- macOS/Linux autostart — not wired; overlay may run, Windows is the supported host.
+1. Copy `.env.example` to `.env` (gitignored):
+   ```bash
+   cp .env.example .env
+   ```
+2. Configure your Google OAuth credentials:
+   ```env
+   MINDSYNC_ANTIGRAVITY_CLIENT_ID="your-client-id.apps.googleusercontent.com"
+   MINDSYNC_ANTIGRAVITY_CLIENT_SECRET="your-client-secret"
+   ```
+   *(Aliases `NOTCH_ANTIGRAVITY_CLIENT_ID` and `NOTCH_ANTIGRAVITY_CLIENT_SECRET` are also supported).*
+
+### Motion Settings
+
+To reduce animations (disables sliding handoff animations and keeps glow effects static):
+- Toggle **Reduce Motion** in the in-app Settings Drawer (⚙️ gear icon).
+- Or export the environment variable: `NOTCH_REDUCE_MOTION=1`.
+
+---
+
+## 🛠️ Adding Custom CLI Agents
+
+You can add any custom coding assistant or local LLM CLI to the dock via the Settings Drawer (⚙️):
+
+1. Click the **Settings Gear** at the bottom of the dock.
+2. Under **Custom Agents**, click **Add Custom CLI**.
+3. Supply a **Display Name** and an optional executable name on your `PATH`.
+4. Choose a Quota Source:
+   - **Command Stdout**: Point to a command/script that outputs JSON:
+     ```json
+     {
+       "sessionUsedPercent": 25,
+       "weeklyUsedPercent": 60
+     }
+     ```
+   - **Manual Snapshot**: Set fixed percentage values for manual tracking.
+   - **Unmanaged**: Displays as an unmetered ring with active process detection.
+
+---
+
+## 🏛️ Architecture & Design Philosophy
+
+- **Spectator Only**: Agent Notch displays state. It never mutates configs, intercepts toolcalls, or handles task delegation. Job scheduling and dispatch belong exclusively to [MindSync](https://github.com/adityarya24/mindsync-ai).
+- **Zero Interruption**: Frameless, transparent Electron overlay configured with OS-level click forwarding so your IDE, terminal, and browser interactions remain completely uninterrupted.
+- **Local-First Security**: Scrapers only inspect local OS credential stores (`~/.claude/`, `~/.codex/`, `~/.gemini/`, Windows Credential Manager). No tokens or telemetry leave your machine.
+
+---
+
+## 📜 License
+
+MIT License © 2026 [Aditya Arya](https://github.com/adityarya24)
