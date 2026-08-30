@@ -12,6 +12,10 @@
   <img src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square" alt="License">
 </p>
 
+<p align="center">
+  <img src="docs/media/hud-desktop.jpg" alt="Agent Notch on the Windows desktop — right-edge quota HUD" width="820">
+</p>
+
 https://github.com/user-attachments/assets/1458bc99-1066-4766-8a93-5b83b652fc57
 
 <p align="center">
