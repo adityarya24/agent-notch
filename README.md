@@ -12,6 +12,15 @@
   <img src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square" alt="License">
 </p>
 
+<p align="center">
+  <img src="docs/media/notch-handoff.gif" alt="Agent Notch: live quota rings, a glow on the working agent, and a one-shot flash when a job hands off" width="820">
+</p>
+
+<p align="center">
+  <em>Live quota rings. The glow marks whichever agent is actually working, and the flash is a job handing off when one hits its limit.<br>
+  The handoff glow is powered by <a href="https://github.com/adityarya24/mindsync-ai"><strong>MindSync</strong></a> — Notch shows the orchestration, MindSync does it.</em>
+</p>
+
 ---
 
 ## 🎯 Overview
