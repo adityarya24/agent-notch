@@ -1,0 +1,71 @@
+{
+  "name": "agent-notch",
+  "version": "1.0.0",
+  "description": "Sleek ambient desktop side-notch HUD for live AI agent session limits and MindSync handoffs",
+  "main": "electron/main.js",
+  "bin": {
+    "notch": "./bin/cli.js",
+    "agent-notch": "./bin/cli.js"
+  },
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/adityarya24/agent-notch.git"
+  },
+  "engines": {
+    "node": ">=18"
+  },
+  "files": [
+    "bin",
+    "electron",
+    "src",
+    "scripts",
+    "index.html",
+    "vite.config.js",
+    "install.ps1",
+    "install.bat",
+    ".env.example",
+    "LICENSE",
+    "README.md"
+  ],
+  "scripts": {
+    "dev": "concurrently -k \"vite\" \"wait-on tcp:5173 && electron electron/main.js\"",
+    "build": "vite build",
+    "prepare": "node scripts/build-hud.js",
+    "preview": "vite preview",
+    "start": "node bin/cli.js",
+    "stop": "node bin/cli.js stop",
+    "restart": "node bin/cli.js restart",
+    "smoke": "node scripts/smoke-glow.js --hud",
+    "smoke:logic": "node scripts/smoke-glow.js",
+    "smoke:glow": "node scripts/smoke-glow.js --hud"
+  },
+  "keywords": [
+    "ai-agent",
+    "hud",
+    "claude",
+    "codex",
+    "cursor",
+    "opencode",
+    "mindsync",
+    "rate-limit"
+  ],
+  "author": "Aditya Arya",
+  "license": "MIT",
+  "dependencies": {
+    "@tailwindcss/vite": "^4.3.3",
+    "@vitejs/plugin-react": "^4.3.4",
+    "clsx": "^2.1.1",
+    "electron": "^34.2.0",
+    "lucide-react": "^1.16.0",
+    "react": "^19.1.0",
+    "react-dom": "^19.1.0",
+    "tailwind-merge": "^3.0.1",
+    "tailwindcss": "^4.3.3",
+    "vite": "^6.4.3"
+  },
+  "devDependencies": {
+    "autoprefixer": "^10.4.20",
+    "concurrently": "^9.1.2",
+    "wait-on": "^8.0.2"
+  }
+}
