@@ -8,6 +8,8 @@
 <p align="center">
   <img src="https://img.shields.io/badge/Platform-Windows%2010%2B-blue?style=flat-square&logo=windows" alt="Platform">
   <img src="https://img.shields.io/badge/Node.js-%3E%3D18.0.0-green?style=flat-square&logo=node.js" alt="Node.js">
+  <a href="https://github.com/adityarya24/agent-notch/actions/workflows/ci.yml"><img src="https://github.com/adityarya24/agent-notch/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI"></a>
+  <a href="https://github.com/adityarya24/agent-notch/releases/latest"><img src="https://img.shields.io/github/v/release/adityarya24/agent-notch?style=flat-square&label=release" alt="Latest release"></a>
   <img src="https://img.shields.io/badge/Stack-Electron%20%7C%20React%2019%20%7C%20Tailwind%20v4-61dafb?style=flat-square" alt="Stack">
   <img src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square" alt="License">
 </p>
