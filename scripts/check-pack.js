@@ -8,7 +8,12 @@ if (!npmCli) {
 const result = spawnSync(process.execPath, [npmCli, 'pack', '--dry-run', '--json', '--ignore-scripts'], {
   cwd: process.cwd(),
   encoding: 'utf8',
-  windowsHide: true
+  windowsHide: true,
+  env: {
+    ...process.env,
+    npm_config_ignore_scripts: 'true',
+    FORCE_COLOR: '0'
+  }
 });
 
 if (result.status !== 0) {
