@@ -3,7 +3,7 @@ import { CircularProgressRing } from './components/CircularProgressRing';
 import { ModelPopoverCard } from './components/ModelPopoverCard';
 import { SettingsModal } from './components/SettingsModal';
 import { ClaudeIcon, OpenAIClassicIcon, CursorIcon, GeminiIcon, OpenCodeIcon, GrokIcon, SparkIcon } from './components/Icons';
-import { Settings } from 'lucide-react';
+import { ChevronLeft, ChevronRight, Settings } from 'lucide-react';
 
 export default function App() {
   const [data, setData] = useState({
@@ -15,12 +15,19 @@ export default function App() {
 
   const [hoveredModelId, setHoveredModelId] = useState(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isCollapsed, setIsCollapsed] = useState(() => typeof window !== 'undefined' && window.innerWidth < 100);
   const [flash, setFlash] = useState(null);
   const scrollRef = useRef(null);
   const ignoringClicks = useRef(null);
   const playedHandoffs = useRef(new Set());
+  const collapseInitialized = useRef(false);
 
   useEffect(() => {
+    if (window.agentNotchAPI?.getConfig) {
+      window.agentNotchAPI.getConfig().then((config) => {
+        if (config) setData((prev) => ({ ...prev, config }));
+      });
+    }
     if (window.agentNotchAPI?.getUsageData) {
       window.agentNotchAPI.getUsageData().then((res) => {
         if (res && res.models) setData(res);
@@ -36,8 +43,15 @@ export default function App() {
   }, []);
 
   useEffect(() => {
-    window.agentNotchAPI?.setOverlayMode?.(isSettingsOpen ? 'settings' : 'dock');
-  }, [isSettingsOpen]);
+    if (!data.config || collapseInitialized.current) return;
+    collapseInitialized.current = true;
+    setIsCollapsed(Boolean(data.config.collapsed));
+  }, [data.config]);
+
+  useEffect(() => {
+    const mode = isCollapsed ? 'collapsed' : (isSettingsOpen ? 'settings' : 'dock');
+    window.agentNotchAPI?.setOverlayMode?.(mode);
+  }, [isCollapsed, isSettingsOpen]);
 
   useEffect(() => {
     const api = window.agentNotchAPI;
@@ -82,6 +96,16 @@ export default function App() {
     }
   };
 
+  const setCollapsed = async (next) => {
+    const previous = isCollapsed;
+    collapseInitialized.current = true;
+    setHoveredModelId(null);
+    setIsSettingsOpen(false);
+    setIsCollapsed(next);
+    const result = await handleSaveConfig({ ...(data.config || {}), collapsed: next });
+    if (result?.success === false) setIsCollapsed(previous);
+  };
+
   const job = data.jobActivity && data.jobActivity.jobStatus === 'running' ? data.jobActivity : null;
   const reduceMotion = Boolean(data.reduceMotion) || Boolean(data.config?.reduceMotion);
 
@@ -107,7 +131,7 @@ export default function App() {
       case 'claude':
         return <ClaudeIcon className="w-4 h-4" />;
       case 'codex':
-        return <OpenAIClassicIcon className="w-4 h-4" />;
+        return <OpenAIClassicIcon className="block w-[15px] h-[15px] -translate-x-[0.25px]" />;
       case 'cursor':
         return <CursorIcon className="w-4 h-4" />;
       case 'opencode':
@@ -122,6 +146,23 @@ export default function App() {
         return <SparkIcon className="w-4 h-4" />;
     }
   };
+
+  if (isCollapsed) {
+    return (
+      <div className="w-full h-full flex items-center justify-end select-none font-sans overflow-hidden">
+        <button
+          data-hud
+          type="button"
+          onClick={() => setCollapsed(false)}
+          title="Expand Agent Notch"
+          aria-label="Expand Agent Notch"
+          className="w-[46px] h-16 rounded-l-2xl border-l-2 border-y-2 border-[#27272a] bg-[#09090b]/98 text-neutral-400 shadow-2xl shadow-black/90 flex items-center justify-center transition-colors hover:border-emerald-400/60 hover:text-emerald-300"
+        >
+          <ChevronLeft className="w-4 h-4" />
+        </button>
+      </div>
+    );
+  }
 
   return (
     <div className={`w-full h-full flex items-center justify-end pr-0 select-none font-sans ${isSettingsOpen ? 'overflow-visible' : 'overflow-hidden'}`}>
@@ -219,7 +260,16 @@ export default function App() {
             {flash.line}
           </div>
         )}
-        <div className="pt-1.5 border-t border-[#27272a]/60 w-full flex justify-center">
+        <div className="pt-1.5 border-t border-[#27272a]/60 w-full flex justify-center gap-1">
+          <button
+            type="button"
+            onClick={() => setCollapsed(true)}
+            title="Collapse Agent Notch"
+            aria-label="Collapse Agent Notch"
+            className="p-1.5 rounded-full text-neutral-400 hover:text-emerald-300 hover:bg-white/10 transition-all duration-200"
+          >
+            <ChevronRight className="w-3.5 h-3.5" />
+          </button>
           <button
             onClick={() => {
               setHoveredModelId(null);

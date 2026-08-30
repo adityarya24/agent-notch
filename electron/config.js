@@ -7,7 +7,8 @@ const DEFAULT_CONFIG = Object.freeze({
   enabledModels: Object.freeze(Object.fromEntries(BUILTIN_IDS.map((id) => [id, true]))),
   customAgents: Object.freeze([]),
   alertThreshold: 80,
-  reduceMotion: false
+  reduceMotion: false,
+  collapsed: false
 });
 const QUOTA_SOURCES = new Set(['unknown', 'manual', 'command']);
 const ICONS = new Set(['spark', 'claude', 'codex', 'gemini', 'cursor', 'grok', 'opencode']);
@@ -84,7 +85,8 @@ function sanitizeConfig(value) {
     enabledModels,
     customAgents,
     alertThreshold,
-    reduceMotion: Boolean(source.reduceMotion)
+    reduceMotion: Boolean(source.reduceMotion),
+    collapsed: Boolean(source.collapsed)
   };
 }
 

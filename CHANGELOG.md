@@ -12,6 +12,7 @@ All notable changes to Agent Notch are documented here.
 - Expired Claude credentials are now read-only; Notch asks Claude Code to refresh the sign-in.
 - Stale quota values are clearly marked and expire after five minutes instead of persisting indefinitely.
 - Applied the configurable alert threshold and provider-specific quota-window labels.
+- Added a persistent edge-collapse handle and optically centered the OpenAI ring icon.
 - Included the production `dist/` bundle in npm packages.
 
 ### Security

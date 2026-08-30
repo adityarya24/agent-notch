@@ -15,6 +15,7 @@ test('sanitizeConfig bounds untrusted values and preserves supported providers',
     enabledModels: { codex: false, bogus: true, custom_ok: true },
     alertThreshold: 500,
     reduceMotion: 1,
+    collapsed: 1,
     customAgents: [{
       id: 'custom_ok',
       name: '  Local Agent  ',
@@ -30,6 +31,7 @@ test('sanitizeConfig bounds untrusted values and preserves supported providers',
   assert.equal(result.enabledModels.custom_ok, true);
   assert.equal(result.alertThreshold, 100);
   assert.equal(result.reduceMotion, true);
+  assert.equal(result.collapsed, true);
   assert.equal(result.customAgents[0].name, 'Local Agent');
   assert.equal(result.customAgents[0].icon, 'spark');
   assert.equal(result.customAgents[0].sessionUsedPercent, 0);
@@ -71,4 +73,9 @@ test('saveLocalConfig writes sanitized JSON atomically', () => {
     delete process.env.NOTCH_CONFIG_DIR;
     fs.rmSync(root, { recursive: true, force: true });
   }
+});
+
+test('new installs start expanded and a collapsed preference survives sanitization', () => {
+  assert.equal(config.sanitizeConfig({}).collapsed, false);
+  assert.equal(config.sanitizeConfig({ collapsed: true }).collapsed, true);
 });

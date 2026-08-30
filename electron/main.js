@@ -18,7 +18,8 @@ const logFile = runtimePath('electron_boot.log');
 
 const OVERLAY = {
   dock: { width: 360, height: 620 },
-  settings: { width: 440, height: 640 }
+  settings: { width: 440, height: 640 },
+  collapsed: { width: 52, height: 76 }
 };
 
 function reduceMotionEnabled(cfg) {
@@ -26,8 +27,16 @@ function reduceMotionEnabled(cfg) {
   return Boolean(cfg && cfg.reduceMotion);
 }
 
+function quotaConfigFingerprint(config) {
+  return JSON.stringify({
+    enabledModels: config?.enabledModels || {},
+    customAgents: config?.customAgents || [],
+    alertThreshold: config?.alertThreshold
+  });
+}
+
 function snapOverlay(mode) {
-  overlayMode = mode === 'settings' ? 'settings' : 'dock';
+  overlayMode = Object.hasOwn(OVERLAY, mode) ? mode : 'dock';
   const size = OVERLAY[overlayMode];
   if (!mainWindow || mainWindow.isDestroyed()) return;
   const primaryDisplay = screen.getPrimaryDisplay();
@@ -55,7 +64,9 @@ if (!gotTheLock) {
 function createOverlayWindow() {
   const primaryDisplay = screen.getPrimaryDisplay();
   const { x: workX, y: workY, width: workWidth, height: workHeight } = primaryDisplay.workArea;
-  const size = OVERLAY.dock;
+  const initialMode = getLocalConfig().collapsed ? 'collapsed' : 'dock';
+  const size = OVERLAY[initialMode];
+  overlayMode = initialMode;
   const distIndex = path.join(__dirname, '../dist/index.html');
   const distUrl = pathToFileURL(distIndex).href;
 
@@ -262,8 +273,19 @@ ipcMain.handle('get-config', () => {
 
 ipcMain.handle('save-config', async (_event, newConfig) => {
   try {
+    const previous = getLocalConfig();
     const config = saveLocalConfig(newConfig);
-    await refreshUsageData({ force: true });
+    if (quotaConfigFingerprint(previous) !== quotaConfigFingerprint(config)) {
+      await refreshUsageData({ force: true });
+    } else if (cachedQuotaState) {
+      publishState({
+        ...cachedQuotaState,
+        config,
+        reduceMotion: reduceMotionEnabled(config)
+      });
+    } else {
+      await refreshUsageData();
+    }
     return { success: true, config };
   } catch (err) {
     return { success: false, message: err.message || String(err) };

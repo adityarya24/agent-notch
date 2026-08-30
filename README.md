@@ -73,6 +73,7 @@ Agent Notch detects and tracks live usage for major coding agent ecosystems dire
   - 🔴 **Critical (80%+)**: Imminent rate-limit window.
 - **Hover Popover Cards**: Detailed dual-meter breakdown (Session vs. Weekly/Monthly) with exact humanized reset countdowns (e.g. *“Resets in 2h 15m”*).
 - **Settings Drawer**: Toggle which CLIs appear, set the alert threshold, add custom CLIs, and turn handoff animation off.
+- **Edge Collapse**: Fold the dock into a slim right-edge handle and reopen it in place; Notch remembers the last chosen state.
 
 ---
 
