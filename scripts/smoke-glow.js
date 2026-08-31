@@ -20,6 +20,12 @@ const keep = rawArgs.includes('--keep');
 const restart = rawArgs.includes('--restart');
 const holdMs = Number((rawArgs.find((a) => a.startsWith('--hold-ms=')) || '').split('=')[1]) || (hud ? 25000 : 0);
 const pollWaitMs = hud ? 16000 : 0;
+const argVal = (name) => {
+  const hit = rawArgs.find((a) => a.startsWith(`--${name}=`));
+  return hit ? String(hit.split('=').slice(1).join('=') || '').trim().toLowerCase() : '';
+};
+const hudFrom = argVal('from') || 'grok';
+const hudTo = argVal('to') || 'codex';
 
 const isolatedRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'notch-smoke-'));
 if (!hud && !wantClear) process.env.AGENT_DISPATCH_HOME = isolatedRoot;
@@ -146,8 +152,6 @@ try {
   }
   console.log('PASS active-agent grok (glow target)');
 
-  if (hud) ensureHud();
-
   const at = nowIso();
   writeMeta({
     id: jobId,
@@ -180,10 +184,44 @@ try {
   }
 
   if (hud) {
+    const fromAgent = hudFrom;
+    const toAgent = hudTo;
+    writeMeta({
+      id: jobId,
+      status: 'running',
+      agent: fromAgent,
+      startedAt: started,
+      updatedAt: nowIso(),
+      attempts: [{ agent: fromAgent, status: 'running', startedAt: started }],
+      handoffs: []
+    });
+    ensureHud();
     console.log('');
-    console.log('>>> DEKHO RIGHT EDGE — grok ring glow + "codex → grok (quota exhausted)"');
-    console.log(`>>> HUD poll up to ${Math.round(pollWaitMs / 1000)}s, then hold ${Math.round(holdMs / 1000)}s. Notch is NOT being killed.`);
+    console.log('>>> 12s to start recording (notch should be expanded)');
+    console.log(`>>> then ${fromAgent} glows, then ${fromAgent} → ${toAgent} (quota exhausted)`);
+    console.log('>>> grok = red source, codex = green dest. Not the other way.');
     console.log('');
+    sleep(12000);
+    console.log(`>>> GLOW ${fromAgent}`);
+    sleep(8000);
+    const hopAt = nowIso();
+    writeMeta({
+      id: jobId,
+      status: 'running',
+      agent: toAgent,
+      startedAt: started,
+      updatedAt: hopAt,
+      attempts: [
+        { agent: fromAgent, status: 'quota_exhausted', startedAt: started, endedAt: hopAt },
+        { agent: toAgent, status: 'running', startedAt: hopAt }
+      ],
+      handoffs: [{ from: fromAgent, to: toAgent, reason: 'quota_exhausted', at: hopAt }],
+      handoffRouting: {
+        agent: toAgent,
+        reason: `Selected ${toAgent} because ${fromAgent} quota is critical.`
+      }
+    });
+    console.log(`>>> HANDOFF ${fromAgent} → ${toAgent} (quota exhausted)`);
     sleep(pollWaitMs);
     sleep(holdMs);
   }

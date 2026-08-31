@@ -29,19 +29,29 @@ function CircularProgressRingInner({
   const idleBloom = known
     ? `drop-shadow(0 0 2px ${ringColor}aa) drop-shadow(0 0 6px ${ringColor}40)`
     : 'none';
-  const liveBloom = `drop-shadow(0 0 3px ${ringColor}) drop-shadow(0 0 8px ${ringColor}cc)`;
+  const liveBloom = `drop-shadow(0 0 5px ${ringColor}) drop-shadow(0 0 14px ${ringColor})`;
 
   return (
     <div className="relative flex items-center justify-center cursor-pointer group">
       {isLive && (
-        <div
-          className={`absolute inset-[2px] rounded-full pointer-events-none ${reduceMotion ? '' : 'notch-live-halo'}`}
-          style={{
-            background: ringColor,
-            opacity: reduceMotion ? 0.28 : undefined,
-            filter: 'blur(5px)'
-          }}
-        />
+        <>
+          <div
+            className={`absolute -inset-2 rounded-full pointer-events-none ${reduceMotion ? '' : 'notch-live-halo'}`}
+            style={{
+              background: ringColor,
+              opacity: reduceMotion ? 0.4 : undefined,
+              filter: 'blur(8px)'
+            }}
+          />
+          <div
+            className={`absolute inset-0 rounded-full pointer-events-none ${reduceMotion ? '' : 'notch-live-core'}`}
+            style={{
+              background: ringColor,
+              opacity: reduceMotion ? 0.28 : undefined,
+              filter: 'blur(4px)'
+            }}
+          />
+        </>
       )}
       <svg
         width={size}

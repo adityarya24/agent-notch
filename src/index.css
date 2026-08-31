@@ -18,10 +18,19 @@ body {
 }
 
 @keyframes notch-live-breathe {
-  0%, 100% { opacity: 0.22; transform: scale(1); }
-  50% { opacity: 0.48; transform: scale(1.05); }
+  0%, 100% { opacity: 0.45; transform: scale(1); }
+  50% { opacity: 1; transform: scale(1.22); }
 }
 
 .notch-live-halo {
-  animation: notch-live-breathe 2.4s ease-in-out infinite;
+  animation: notch-live-breathe 1.35s ease-in-out infinite;
+}
+
+@keyframes notch-live-core {
+  0%, 100% { opacity: 0.35; }
+  50% { opacity: 0.8; }
+}
+
+.notch-live-core {
+  animation: notch-live-core 1.35s ease-in-out infinite;
 }
