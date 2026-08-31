@@ -2,7 +2,7 @@
 
 Right-edge HUD for live AI coding-agent quotas, plus a read-only view of MindSync job handoffs.
 
-**Status (2026-08-31):** Public at [adityarya24/agent-notch](https://github.com/adityarya24/agent-notch) (`v1.0.0`); `v1.0.1` hardening is in preparation. Phase 1–3 glow live. Mac / multi-monitor / packaged installer are demand-driven — see README Upcoming.
+**Status (2026-08-31):** Public at [adityarya24/agent-notch](https://github.com/adityarya24/agent-notch) (`v1.1.0`). Compact four-ring HUD, drag-reorder, in-rail collapse, quota-color glow. Mac / multi-monitor / packaged installer are demand-driven — see README Upcoming.
 
 ---
 
@@ -36,7 +36,8 @@ Notch does **not** transfer jobs. It displays the latest MindSync handoff (`from
 
 MindSync dispatch has preemptive readers and headroom ranking. Notch stays a spectator — it does not transfer jobs.
 
-- [x] Active-agent glow + dot (not on the quota ring).
+- [x] Active-agent glow in the ring’s own quota color (no pip).
+- [x] Four-ring viewport, scroll for extras, drag-to-reorder.
 - [x] One-shot handoff flash (`from → to (reason)`), 2–3s, no replay.
 - [x] Poll job `meta.json` every 2.5s while a job is running; quiet when none.
 - [x] Reduce-motion setting / `NOTCH_REDUCE_MOTION=1`.

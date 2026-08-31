@@ -2,6 +2,20 @@
 
 All notable changes to Agent Notch are documented here.
 
+## [1.1.0] - 2026-08-31
+
+### Added
+
+- Drag-to-reorder rings. The first four stay in view; extra rings scroll underneath.
+- Healthy (green) percentages now use the same quota color as the ring.
+
+### Changed
+
+- Collapse control is an in-rail chevron: right to tuck, left to pull. The tucked pill keeps the open rail’s height.
+- Active-agent glow uses the working ring’s own color, stays inside the pill, and no longer uses a green pip.
+- Overlay content is vertically centered in the work area.
+- README hero is a set of stills instead of the demo video.
+
 ## [1.0.1] - 2026-08-31
 
 ### Fixed

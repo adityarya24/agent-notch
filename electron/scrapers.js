@@ -5,6 +5,7 @@ const os = require('os');
 const { URL } = require('url');
 const { execFile } = require('child_process');
 const { DEFAULT_CONFIG, getLocalConfig, saveLocalConfig } = require('./config');
+const { sortModelsByOrder } = require('./model-order');
 
 const homeDir = os.homedir();
 
@@ -247,6 +248,21 @@ async function fetchClaudeUsage(accessToken) {
 }
 
 async function getClaudeUsage() {
+  if (process.env.NOTCH_DEMO_CLAUDE === '1') {
+    return detectedCard({
+      id: 'claude',
+      name: 'Claude Code',
+      provider: 'Anthropic · Claude',
+      icon: 'claude',
+      quotaState: 'known',
+      sessionUsedPercent: 34,
+      weeklyUsedPercent: 79,
+      sessionLabel: '5h session',
+      weeklyLabel: 'Weekly',
+      sessionResetText: 'Resets in 2h 18m',
+      weeklyResetText: 'Resets in 4d'
+    });
+  }
   const dir = claudeHome();
   if (!fs.existsSync(dir)) return null;
   const name = readClaudeModelName();
@@ -1328,7 +1344,10 @@ async function getAllInstalledAgentUsage({ force = false, now = Date.now() } = {
   );
 
   const allDetected = results.filter(Boolean);
-  const filteredModels = allDetected.map((model) => attachRing({ ...model }, config.alertThreshold));
+  const filteredModels = sortModelsByOrder(
+    allDetected.map((model) => attachRing({ ...model }, config.alertThreshold)),
+    config.modelOrder
+  );
   const allDetectedIds = [
     ...BUILTIN_READERS.map(({ id, name, provider }) => ({ id, name, provider, custom: false })),
     ...customReaders.map(({ id, name, provider }) => ({ id, name, provider, custom: true }))

@@ -175,6 +175,9 @@ export function SettingsModal({ isOpen, onClose, config, allDetectedIds, onSaveC
         <span className="text-[11px] font-mono text-neutral-400 uppercase tracking-wider">
           Providers
         </span>
+        <p className="text-[10px] text-neutral-500 leading-snug">
+          Drag rings on the notch to reorder. First 4 stay in view; scroll for the rest.
+        </p>
 
         {availableModels.map((m) => {
           const isEnabled = enabledMap[m.id] !== false;

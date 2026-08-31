@@ -4,6 +4,10 @@
   color-scheme: dark;
 }
 
+html, body, #root {
+  height: 100%;
+}
+
 body {
   margin: 0;
   padding: 0;
@@ -11,4 +15,13 @@ body {
   font-family: 'Segoe UI', system-ui, -apple-system, sans-serif;
   user-select: none;
   -webkit-user-drag: none;
+}
+
+@keyframes notch-live-breathe {
+  0%, 100% { opacity: 0.22; transform: scale(1); }
+  50% { opacity: 0.48; transform: scale(1.05); }
+}
+
+.notch-live-halo {
+  animation: notch-live-breathe 2.4s ease-in-out infinite;
 }

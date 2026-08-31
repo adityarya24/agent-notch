@@ -15,18 +15,18 @@
 </p>
 
 <p align="center">
-  <a href="docs/media/agent-notch-v1.0.1-demo-final.mp4">
-    <img src="docs/media/hud-desktop.jpg" alt="Agent Notch on the Windows desktop — right-edge quota HUD" width="820">
-  </a>
+  <img src="docs/media/readme-idle.jpg" alt="Agent Notch idle HUD on the Windows desktop — four quota rings on the right edge" width="820">
 </p>
 
 <p align="center">
-  <a href="docs/media/agent-notch-v1.0.1-demo-final.mp4"><strong>▶ Watch the 26-second demo</strong></a>
+  <img src="docs/media/readme-working.jpg" alt="Active agent glowing in its own quota color" width="400">
+  &nbsp;
+  <img src="docs/media/readme-scroll.jpg" alt="Scrolled rail showing extra rings, including a critical red quota" width="400">
 </p>
 
 <p align="center">
-  <em>Live quota rings. The glow marks whichever agent is actually working, and the flash is a job handing off when one hits its limit.<br>
-  The handoff glow is powered by <a href="https://github.com/adityarya24/mindsync-ai"><strong>MindSync</strong></a> — Notch shows the orchestration, MindSync does it.</em>
+  <em>Live quota rings, color-matched percentages, and a compact four-ring viewport.<br>
+  The glow marks whichever agent is actually working. Handoff flash is powered by <a href="https://github.com/adityarya24/mindsync-ai"><strong>MindSync</strong></a> — Notch shows the orchestration, MindSync does it.</em>
 </p>
 
 ---
@@ -82,8 +82,9 @@ Agent Notch detects and tracks live usage for major coding agent ecosystems dire
   - 🟡 **Warning (50% – 80%)**: Approaching session threshold.
   - 🔴 **Critical (80%+)**: Imminent rate-limit window.
 - **Hover Popover Cards**: Detailed dual-meter breakdown (Session vs. Weekly/Monthly) with exact humanized reset countdowns (e.g. *“Resets in 2h 15m”*).
+- **Compact Viewport**: Four rings stay in view; extra rings scroll. Drag a ring to put your most-used agents on top.
 - **Settings Drawer**: Toggle which CLIs appear, set the alert threshold, add custom CLIs, and turn handoff animation off.
-- **Edge Collapse**: Tuck the full-size rail into the screen edge, leaving only a slim curved grip; reopen it in place with one click. Notch remembers the last chosen state.
+- **Edge Collapse**: Hover the rail for a right-facing chevron to tuck it; a left-facing chevron on the same-height remnant pulls it back. Notch remembers the last chosen state.
 
 ---
 
@@ -94,7 +95,7 @@ Agent Notch detects and tracks live usage for major coding agent ecosystems dire
 
 If you also use [**MindSync**](https://github.com/adityarya24/mindsync-ai) for multi-agent task dispatch and automated failover across local and VPS agents, Notch automatically surfaces live orchestration status:
 
-- **Active Agent Glow**: The actively executing agent ring gains a subtle emerald indicator dot and soft background glow.
+- **Active Agent Glow**: The working ring breathes in its own quota color. No extra badge.
 - **One-Shot Handoff Flash**: When MindSync transitions a task between agents (e.g. `codex → grok (quota exhausted)`), a non-intrusive 2–3s banner plays once and quietly settles.
 - **Pure Spectator**: Notch never touches job execution, task transfers, or dispatch — it purely reflects live state from `~/.mindsync/dispatch/jobs/`.
 

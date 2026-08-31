@@ -1,6 +1,7 @@
 const fs = require('fs');
 const os = require('os');
 const path = require('path');
+const { sanitizeModelOrder } = require('./model-order');
 
 const BUILTIN_IDS = ['codex', 'claude', 'gemini', 'cursor', 'opencode', 'grok'];
 const DEFAULT_CONFIG = Object.freeze({
@@ -71,8 +72,8 @@ function sanitizeConfig(value) {
     .map(sanitizeCustomAgent)
     .filter(Boolean);
   const enabledModels = { ...DEFAULT_CONFIG.enabledModels };
+  const allowedIds = new Set([...BUILTIN_IDS, ...customAgents.map((agent) => agent.id)]);
   if (source.enabledModels && typeof source.enabledModels === 'object') {
-    const allowedIds = new Set([...BUILTIN_IDS, ...customAgents.map((agent) => agent.id)]);
     for (const [id, enabled] of Object.entries(source.enabledModels)) {
       if (allowedIds.has(id) && typeof enabled === 'boolean') enabledModels[id] = enabled;
     }
@@ -86,7 +87,8 @@ function sanitizeConfig(value) {
     customAgents,
     alertThreshold,
     reduceMotion: Boolean(source.reduceMotion),
-    collapsed: Boolean(source.collapsed)
+    collapsed: Boolean(source.collapsed),
+    modelOrder: sanitizeModelOrder(source.modelOrder, allowedIds)
   };
 }
 

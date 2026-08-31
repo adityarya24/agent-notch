@@ -79,3 +79,12 @@ test('new installs start expanded and a collapsed preference survives sanitizati
   assert.equal(config.sanitizeConfig({}).collapsed, false);
   assert.equal(config.sanitizeConfig({ collapsed: true }).collapsed, true);
 });
+
+test('modelOrder keeps known ids, drops junk, and dedupes', () => {
+  const result = config.sanitizeConfig({
+    modelOrder: ['grok', 'codex', 'grok', 'nope', 12, 'custom_ok'],
+    customAgents: [{ id: 'custom_ok', name: 'Local' }]
+  });
+  assert.deepEqual(result.modelOrder, ['grok', 'codex', 'custom_ok']);
+  assert.deepEqual(config.sanitizeConfig({}).modelOrder, []);
+});
