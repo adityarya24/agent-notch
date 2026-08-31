@@ -15,10 +15,14 @@
 </p>
 
 <p align="center">
-  <img src="docs/media/hud-desktop.jpg" alt="Agent Notch on the Windows desktop — right-edge quota HUD" width="820">
+  <a href="docs/media/agent-notch-v1.0.1-demo-final.mp4">
+    <img src="docs/media/hud-desktop.jpg" alt="Agent Notch on the Windows desktop — right-edge quota HUD" width="820">
+  </a>
 </p>
 
-https://github.com/user-attachments/assets/1458bc99-1066-4766-8a93-5b83b652fc57
+<p align="center">
+  <a href="docs/media/agent-notch-v1.0.1-demo-final.mp4"><strong>▶ Watch the 26-second demo</strong></a>
+</p>
 
 <p align="center">
   <em>Live quota rings. The glow marks whichever agent is actually working, and the flash is a job handing off when one hits its limit.<br>
