@@ -15,7 +15,7 @@
 </p>
 
 <p align="center">
-  <img src="docs/media/handoff.gif" alt="Grok hits 100% and the job hands off to Codex; the card explains the pick" width="356">
+  <img src="docs/media/handoff.gif" alt="Grok hits 100% and the job hands off to Codex; the card explains the pick" width="820">
 </p>
 
 <p align="center">
