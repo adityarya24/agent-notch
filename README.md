@@ -15,25 +15,21 @@
 </p>
 
 <p align="center">
-  <img src="docs/media/handoff.gif" alt="Grok hits 100% and the job hands off to Codex; the card explains the pick" width="820">
+  <img src="docs/media/handoff.gif" alt="Grok hits 100%, the job moves to Codex, and the card explains the pick" width="560">
 </p>
 
 <p align="center">
-  <em>Grok hits 100%, the job hands off to Codex, and the card says why it was picked.<br>
+  <em>Grok hits 100%. The job moves to Codex, and the card says why it was picked.<br>
   The dispatch behind it is <a href="https://github.com/adityarya24/mindsync-ai"><strong>MindSync</strong></a> — Notch shows the orchestration, MindSync does it.</em>
 </p>
 
 <p align="center">
-  <img src="docs/media/readme-idle.jpg" alt="Idle rail — four quota rings, each percentage in its ring's colour" width="200">
-  &nbsp;&nbsp;
-  <img src="docs/media/readme-working.jpg" alt="The working agent's ring lit up" width="200">
-  &nbsp;&nbsp;
-  <img src="docs/media/readme-scroll.jpg" alt="Scrolled further down the rail, with a spent account in red" width="200">
+  <img src="docs/media/demo.gif" alt="Hovering each ring for its usage card, then the settings drawer and adding a custom CLI" width="640">
 </p>
 
 <p align="center">
-  <em>Live quota rings, color-matched percentages, and a compact four-ring viewport.<br>
-  The glow marks whichever agent is actually working; a red ring means that account is spent.</em>
+  <em>Hover a ring for that account's windows and resets. Red means spent.<br>
+  Every CLI can be toggled, and you can add your own.</em>
 </p>
 
 ---
