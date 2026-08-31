@@ -24,13 +24,11 @@
 </p>
 
 <p align="center">
-  <img src="docs/media/readme-idle.jpg" alt="Agent Notch idle HUD on the Windows desktop — four quota rings on the right edge" width="820">
-</p>
-
-<p align="center">
-  <img src="docs/media/readme-working.jpg" alt="Active agent glowing in its own quota color" width="400">
-  &nbsp;
-  <img src="docs/media/readme-scroll.jpg" alt="Scrolled rail showing extra rings, including a critical red quota" width="400">
+  <img src="docs/media/readme-idle.jpg" alt="Idle rail — four quota rings, each percentage in its ring's colour" width="200">
+  &nbsp;&nbsp;
+  <img src="docs/media/readme-working.jpg" alt="The working agent's ring lit up" width="200">
+  &nbsp;&nbsp;
+  <img src="docs/media/readme-scroll.jpg" alt="Scrolled further down the rail, with a spent account in red" width="200">
 </p>
 
 <p align="center">
