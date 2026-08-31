@@ -15,6 +15,15 @@
 </p>
 
 <p align="center">
+  <img src="docs/media/handoff.gif" alt="Grok hits 100% and the job hands off to Codex; the card explains the pick" width="500">
+</p>
+
+<p align="center">
+  <em>Grok hits 100%, the job hands off to Codex, and the card says why it was picked.<br>
+  The dispatch behind it is <a href="https://github.com/adityarya24/mindsync-ai"><strong>MindSync</strong></a> — Notch shows the orchestration, MindSync does it.</em>
+</p>
+
+<p align="center">
   <img src="docs/media/readme-idle.jpg" alt="Agent Notch idle HUD on the Windows desktop — four quota rings on the right edge" width="820">
 </p>
 
@@ -26,7 +35,7 @@
 
 <p align="center">
   <em>Live quota rings, color-matched percentages, and a compact four-ring viewport.<br>
-  The glow marks whichever agent is actually working. Handoff flash is powered by <a href="https://github.com/adityarya24/mindsync-ai"><strong>MindSync</strong></a> — Notch shows the orchestration, MindSync does it.</em>
+  The glow marks whichever agent is actually working; a red ring means that account is spent.</em>
 </p>
 
 ---
