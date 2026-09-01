@@ -1,9 +1,8 @@
 const { execFile } = require('child_process');
 
 const PROCESS_GRACE_MS = 15 * 1000;
-// Interactive CLIs can spend a few dozen milliseconds on idle housekeeping
-// between samples. Keep that noise from continuously re-arming the glow.
-const MIN_CPU_DELTA_SECONDS = 0.1;
+const MIN_CPU_DELTA_SECONDS = 0.03;
+const MIN_ACTIVE_SAMPLES = 2;
 const BUILTIN_PROCESS_NAMES = ['codex', 'claude', 'grok', 'opencode', 'gemini', 'agy', 'antigravity-cli', 'cursor-agent'];
 const GENERIC_PROCESS_NAMES = new Set([
   'bash', 'bun', 'cmd', 'deno', 'dotnet', 'fish', 'java', 'javaw', 'perl', 'php',
@@ -59,6 +58,12 @@ function ringsForProcess(rawName, customMappings = {}) {
     && Array.isArray(customMappings[name]) ? customMappings[name] : [];
   for (const id of customRings) rings.add(id);
   return [...rings];
+}
+
+function supportsProcessOnlyActivity(ring) {
+  // Session-backed providers use their artifact writes as the work signal;
+  // their interactive processes can burn CPU indefinitely while idle.
+  return ring === 'codex' || /^custom_[A-Za-z0-9_-]+$/.test(String(ring || ''));
 }
 
 function cpuTimeSeconds(raw) {
@@ -127,13 +132,16 @@ class ProcessActivityTracker {
     sampler = sampleAgentProcesses,
     now = () => Date.now(),
     graceMs = PROCESS_GRACE_MS,
-    minCpuDeltaSeconds = MIN_CPU_DELTA_SECONDS
+    minCpuDeltaSeconds = MIN_CPU_DELTA_SECONDS,
+    minActiveSamples = MIN_ACTIVE_SAMPLES
   } = {}) {
     this.sampler = sampler;
     this.now = now;
     this.graceMs = graceMs;
     this.minCpuDeltaSeconds = minCpuDeltaSeconds;
+    this.minActiveSamples = minActiveSamples;
     this.previousCpu = new Map();
+    this.busyStreak = new Map();
     this.activeUntil = new Map();
     this.live = new Set();
     this.pending = null;
@@ -156,6 +164,7 @@ class ProcessActivityTracker {
     this.pending = Promise.resolve(this.sampler(Object.keys(customMappings))).then((samples) => {
       const now = this.now();
       const nextCpu = new Map();
+      const nextBusyStreak = new Map();
       const liveRings = new Set();
       for (const row of samples || []) {
         const rings = ringsForProcess(row.name, customMappings);
@@ -164,10 +173,16 @@ class ProcessActivityTracker {
           liveRings.add(ring);
           const key = `${ring}:${row.pid}`;
           const previous = this.previousCpu.get(key);
-          if (Number.isFinite(previous) && row.cpuSeconds - previous >= this.minCpuDeltaSeconds) {
+          const meaningfulDelta = Number.isFinite(previous)
+            && row.cpuSeconds - previous >= this.minCpuDeltaSeconds;
+          const streak = meaningfulDelta ? (this.busyStreak.get(key) || 0) + 1 : 0;
+          // Interactive CLIs can perform isolated housekeeping bursts while
+          // sitting at a prompt. Only sustained CPU movement represents work.
+          if (streak >= this.minActiveSamples && supportsProcessOnlyActivity(ring)) {
             this.activeUntil.set(ring, now + this.graceMs);
           }
           nextCpu.set(key, row.cpuSeconds);
+          nextBusyStreak.set(key, streak);
         }
       }
       for (const ring of this.activeUntil.keys()) {
@@ -175,6 +190,7 @@ class ProcessActivityTracker {
       }
       this.live = liveRings;
       this.previousCpu = nextCpu;
+      this.busyStreak = nextBusyStreak;
       return this.current();
     }).catch(() => this.current()).finally(() => {
       this.pending = null;
@@ -185,6 +201,7 @@ class ProcessActivityTracker {
 
 module.exports = {
   BUILTIN_PROCESS_NAMES,
+  MIN_ACTIVE_SAMPLES,
   MIN_CPU_DELTA_SECONDS,
   PROCESS_GRACE_MS,
   ProcessActivityTracker,
@@ -196,5 +213,6 @@ module.exports = {
   parseWindowsSamples,
   ringForProcess,
   ringsForProcess,
-  sampleAgentProcesses
+  sampleAgentProcesses,
+  supportsProcessOnlyActivity
 };
