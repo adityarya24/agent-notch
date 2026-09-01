@@ -2,6 +2,16 @@
 
 All notable changes to Agent Notch are documented here.
 
+## [1.3.4] - 2026-09-02
+
+### Fixed
+
+- The working-agent pulse no longer bleeds onto neighbouring icons. It was a filled,
+  blurred disc that grew to `scale(1.22)` -- roughly 85px of glow against a 65px gap
+  between rows -- so an agent at work lit up the icons above and below it and washed
+  out its own percentage label. It is now a halo that hugs the ring, and the pulse
+  animates opacity only.
+
 ## [1.3.3] - 2026-09-02
 
 ### Fixed
