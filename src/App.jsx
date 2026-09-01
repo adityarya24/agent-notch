@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo, useRef } from 'react';
 import { CircularProgressRing } from './components/CircularProgressRing';
 import { ModelPopoverCard } from './components/ModelPopoverCard';
 import { SettingsModal } from './components/SettingsModal';
-import { ClaudeIcon, OpenAIClassicIcon, CursorIcon, GeminiIcon, OpenCodeIcon, GrokIcon, SparkIcon } from './components/Icons';
+import { ClaudeIcon, OpenAIClassicIcon, CursorIcon, GeminiIcon, AntigravityIcon, OpenCodeIcon, GrokIcon, SparkIcon } from './components/Icons';
 import { ChevronLeft, ChevronRight, Settings } from 'lucide-react';
 import { moveId, sortModelsByOrder } from './modelOrder';
 
@@ -268,6 +268,8 @@ export default function App() {
         return <SparkIcon className="w-4 h-4" />;
       case 'gemini':
         return <GeminiIcon className="w-4 h-4" />;
+      case 'antigravity':
+        return <AntigravityIcon className="w-4 h-4" />;
       default:
         return <SparkIcon className="w-4 h-4" />;
     }

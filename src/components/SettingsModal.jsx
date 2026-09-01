@@ -5,6 +5,7 @@ import {
   OpenAIClassicIcon,
   CursorIcon,
   GeminiIcon,
+  AntigravityIcon,
   OpenCodeIcon,
   GrokIcon,
   SparkIcon
@@ -15,6 +16,7 @@ const ICON_OPTIONS = [
   { id: 'claude', label: 'Claude', Icon: ClaudeIcon },
   { id: 'codex', label: 'Codex', Icon: OpenAIClassicIcon },
   { id: 'gemini', label: 'Gemini', Icon: GeminiIcon },
+  { id: 'antigravity', label: 'Antigravity', Icon: AntigravityIcon },
   { id: 'cursor', label: 'Cursor', Icon: CursorIcon },
   { id: 'grok', label: 'Grok', Icon: GrokIcon },
   { id: 'opencode', label: 'OpenCode', Icon: OpenCodeIcon }
