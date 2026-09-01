@@ -2,6 +2,14 @@
 
 All notable changes to Agent Notch are documented here.
 
+## [1.3.3] - 2026-09-02
+
+### Fixed
+
+- The Grok card carried the X logo rather than Grok's own mark. It now uses the Grok
+  mark, traced from the official artwork into a monochrome path that follows
+  `currentColor` like every other icon.
+
 ## [1.3.2] - 2026-09-02
 
 ### Fixed
