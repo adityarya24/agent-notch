@@ -1,7 +1,9 @@
 const { execFile } = require('child_process');
 
 const PROCESS_GRACE_MS = 15 * 1000;
-const MIN_CPU_DELTA_SECONDS = 0.01;
+// Interactive CLIs can spend a few dozen milliseconds on idle housekeeping
+// between samples. Keep that noise from continuously re-arming the glow.
+const MIN_CPU_DELTA_SECONDS = 0.1;
 const BUILTIN_PROCESS_NAMES = ['codex', 'claude', 'grok', 'opencode', 'gemini', 'agy', 'antigravity-cli', 'cursor-agent'];
 const GENERIC_PROCESS_NAMES = new Set([
   'bash', 'bun', 'cmd', 'deno', 'dotnet', 'fish', 'java', 'javaw', 'perl', 'php',

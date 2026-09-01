@@ -75,8 +75,8 @@ test('lights every CPU-active CLI and clears exited processes', async () => {
   let now = 1000;
   const samples = [
     [{ pid: 1, name: 'codex', cpuSeconds: 10 }, { pid: 2, name: 'grok', cpuSeconds: 20 }],
-    [{ pid: 1, name: 'codex', cpuSeconds: 10.02 }, { pid: 2, name: 'grok', cpuSeconds: 20.2 }],
-    [{ pid: 1, name: 'codex', cpuSeconds: 10.02 }]
+    [{ pid: 1, name: 'codex', cpuSeconds: 10.12 }, { pid: 2, name: 'grok', cpuSeconds: 20.2 }],
+    [{ pid: 1, name: 'codex', cpuSeconds: 10.12 }]
   ];
   const tracker = new ProcessActivityTracker({ sampler: async () => samples.shift(), now: () => now, graceMs: 15_000 });
 
@@ -88,6 +88,23 @@ test('lights every CPU-active CLI and clears exited processes', async () => {
   assert.deepEqual((await tracker.sample()).map((row) => row.activeRing), ['codex']);
 });
 
+test('does not light an open idle CLI from background CPU jitter', async () => {
+  let now = 1000;
+  let cpu = 10;
+  const tracker = new ProcessActivityTracker({
+    sampler: async () => [{ pid: 7, name: 'grok', cpuSeconds: cpu }],
+    now: () => now
+  });
+
+  assert.deepEqual(await tracker.sample(), []);
+  for (const delta of [0.01, 0.05, 0.02, 0.09]) {
+    cpu += delta;
+    now += 3000;
+    assert.deepEqual(await tracker.sample(), []);
+  }
+  assert.deepEqual(tracker.liveRings(), ['grok']);
+});
+
 test('keeps an idle live CLI glowing only for the grace window', async () => {
   let now = 1000;
   let cpu = 1;
@@ -97,7 +114,7 @@ test('keeps an idle live CLI glowing only for the grace window', async () => {
     graceMs: 10_000
   });
   await tracker.sample();
-  cpu += 0.02;
+  cpu += 0.12;
   now += 1000;
   await tracker.sample();
   now += 9999;
@@ -110,7 +127,7 @@ test('lights a custom ring from its configured native process', async () => {
   const requestedNames = [];
   const samples = [
     [{ pid: 9, name: 'fixture-agent.exe', cpuSeconds: 4 }],
-    [{ pid: 9, name: 'fixture-agent.exe', cpuSeconds: 4.05 }]
+    [{ pid: 9, name: 'fixture-agent.exe', cpuSeconds: 4.12 }]
   ];
   const tracker = new ProcessActivityTracker({
     sampler: async (names) => {
