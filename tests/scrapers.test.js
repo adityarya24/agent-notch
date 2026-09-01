@@ -27,6 +27,83 @@ test('ring uses the highest available quota window', () => {
   assert.equal(result.status, 'warning');
 });
 
+test('Grok billing parser preserves legacy percentage fields', () => {
+  const result = _test.parseGrokBillingConfig({
+    creditUsagePercent: 42,
+    productUsage: [{ usagePercent: 17 }]
+  });
+  assert.equal(result.weeklyUsed, 42);
+  assert.equal(result.sessionUsed, 17);
+});
+
+test('Grok billing parser falls back to legacy included-credit totals', () => {
+  const result = _test.parseGrokBillingConfig({
+    monthlyLimit: { val: 80 },
+    used: { val: 20 }
+  });
+  assert.equal(result.weeklyUsed, 25);
+  assert.equal(result.sessionUsed, null);
+});
+
+test('Grok billing parser caps exhausted legacy usage at 100 percent', () => {
+  const result = _test.parseGrokBillingConfig({
+    monthlyLimit: { val: 80 },
+    used: { val: 120 }
+  });
+  assert.equal(result.weeklyUsed, 100);
+});
+
+test('Grok billing parser distinguishes a missing total from an encoded zero', () => {
+  const missing = _test.parseGrokBillingConfig({ monthlyLimit: { val: 80 } });
+  assert.equal(missing.weeklyUsed, null);
+
+  const zero = _test.parseGrokBillingConfig({ monthlyLimit: { val: 80 }, used: {} });
+  assert.equal(zero.weeklyUsed, 0);
+});
+
+test('Grok billing parser does not treat on-demand spend as included quota', () => {
+  const result = _test.parseGrokBillingConfig({
+    onDemandCap: { val: 80 },
+    onDemandUsed: { val: 20 }
+  });
+  assert.equal(result.weeklyUsed, null);
+  assert.equal(result.sessionUsed, null);
+});
+
+test('signed-in providers can report unavailable quota without becoming expired', () => {
+  const result = _test.detectedCard({
+    id: 'grok',
+    name: 'Grok',
+    provider: 'xAI',
+    icon: 'grok',
+    quotaState: 'unknown',
+    authState: 'signed_in'
+  });
+  assert.equal(result.quotaState, 'unknown');
+  assert.equal(result.authState, 'signed_in');
+  assert.equal(result.ringPercent, null);
+});
+
+test('Grok billing response separates expired auth from provider failures', () => {
+  const expired = _test.grokBillingCardFromResponse({ status: 401, json: {} });
+  assert.equal(expired.quotaState, 'expired');
+  assert.equal(expired.authState, 'expired');
+
+  const unavailable = _test.grokBillingCardFromResponse({ status: 500, json: {} });
+  assert.equal(unavailable.quotaState, 'unknown');
+  assert.equal(unavailable.authState, 'signed_in');
+});
+
+test('Grok accepted response stays signed in when percentage is not exposed', () => {
+  const result = _test.grokBillingCardFromResponse({
+    status: 200,
+    json: { config: { currentPeriod: { end: '2099-01-01T00:00:00Z' } } }
+  });
+  assert.equal(result.quotaState, 'unknown');
+  assert.equal(result.authState, 'signed_in');
+  assert.equal(result.ringPercent, null);
+});
+
 test('reader polling is single-flight and cached', async () => {
   let calls = 0;
   const entry = {

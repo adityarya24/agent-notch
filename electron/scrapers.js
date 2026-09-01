@@ -101,6 +101,7 @@ function detectedCard({
   provider,
   icon,
   quotaState,
+  authState = quotaState === 'known' ? 'signed_in' : quotaState === 'expired' ? 'expired' : 'unknown',
   sessionUsedPercent = null,
   weeklyUsedPercent = null,
   sessionResetText = 'Quota unknown',
@@ -115,6 +116,7 @@ function detectedCard({
     provider,
     icon,
     quotaState,
+    authState,
     quotaKnown: quotaState === 'known',
     sessionUsedPercent,
     weeklyUsedPercent,
@@ -1000,6 +1002,99 @@ function readGrokSession() {
   return null;
 }
 
+function parseGrokBillingConfig(config) {
+  let weeklyUsed = coercePercent(config && config.creditUsagePercent);
+  let sessionUsed = null;
+  const products = Array.isArray(config && config.productUsage) ? config.productUsage : [];
+  for (const product of products) {
+    const pct = coercePercent(product && (product.usagePercent ?? product.creditUsagePercent));
+    if (pct != null) {
+      sessionUsed = pct;
+      break;
+    }
+  }
+
+  if (weeklyUsed == null) {
+    const limit = config && config.monthlyLimit;
+    const spent = config && config.used;
+    const limitValue = limit && typeof limit === 'object'
+      ? Number(limit.val == null ? 0 : limit.val)
+      : null;
+    const spentValue = spent && typeof spent === 'object'
+      ? Number(spent.val == null ? 0 : spent.val)
+      : null;
+    if (Number.isFinite(limitValue) && limitValue > 0 && Number.isFinite(spentValue) && spentValue >= 0) {
+      weeklyUsed = Math.round(Math.min(100, (spentValue / limitValue) * 100));
+    }
+  }
+
+  return {
+    sessionUsed,
+    weeklyUsed,
+    weeklyReset: formatResetAt(config && config.currentPeriod && config.currentPeriod.end)
+      || formatResetAt(config && config.billingPeriodEnd)
+  };
+}
+
+function grokBillingCardFromResponse(res, name = 'Grok', provider = 'xAI') {
+  if (res && (res.status === 401 || res.status === 403)) {
+    return detectedCard({
+      id: 'grok',
+      name,
+      provider,
+      icon: 'grok',
+      quotaState: 'expired',
+      sessionResetText: 'Sign in: grok login',
+      weeklyResetText: 'OAuth token expired',
+      status: 'expired'
+    });
+  }
+
+  const config = res && res.json && res.json.config;
+  if (!res || res.status !== 200 || !config) {
+    return detectedCard({
+      id: 'grok',
+      name,
+      provider,
+      icon: 'grok',
+      quotaState: 'unknown',
+      authState: 'signed_in',
+      sessionResetText: 'Signed in · billing unavailable',
+      weeklyResetText: 'Quota unknown',
+      status: 'unknown'
+    });
+  }
+
+  const { sessionUsed, weeklyUsed, weeklyReset } = parseGrokBillingConfig(config);
+  if (weeklyUsed == null && sessionUsed == null) {
+    return detectedCard({
+      id: 'grok',
+      name,
+      provider,
+      icon: 'grok',
+      quotaState: 'unknown',
+      authState: 'signed_in',
+      sessionResetText: 'Signed in · usage unavailable',
+      weeklyResetText: weeklyReset || 'No percentage exposed',
+      status: 'unknown'
+    });
+  }
+
+  return detectedCard({
+    id: 'grok',
+    name,
+    provider,
+    icon: 'grok',
+    quotaState: 'known',
+    sessionUsedPercent: sessionUsed,
+    weeklyUsedPercent: weeklyUsed,
+    sessionLabel: 'Product usage',
+    weeklyLabel: 'Billing period',
+    sessionResetText: sessionUsed == null ? 'No session window' : 'Active',
+    weeklyResetText: weeklyReset || (weeklyUsed == null ? 'No weekly window' : 'Active')
+  });
+}
+
 async function getGrokUsage() {
   const grokDir = grokHome();
   if (!fs.existsSync(grokDir)) return null;
@@ -1033,71 +1128,7 @@ async function getGrokUsage() {
       },
       timeoutMs: 10000
     });
-    if (res.status === 401 || res.status === 403) {
-      return detectedCard({
-        id: 'grok',
-        name,
-        provider,
-        icon: 'grok',
-        quotaState: 'expired',
-        sessionResetText: 'Sign in: grok login',
-        weeklyResetText: 'OAuth token expired',
-        status: 'expired'
-      });
-    }
-    const config = res.json && res.json.config;
-    if (res.status !== 200 || !config) {
-      return detectedCard({
-        id: 'grok',
-        name,
-        provider,
-        icon: 'grok',
-        quotaState: 'unknown',
-        sessionResetText: 'Billing endpoint unavailable',
-        weeklyResetText: 'Quota unknown',
-        status: 'unknown'
-      });
-    }
-
-    const weekly = coercePercent(config.creditUsagePercent);
-    let sessionUsed = null;
-    const products = Array.isArray(config.productUsage) ? config.productUsage : [];
-    for (const product of products) {
-      const pct = coercePercent(product && (product.usagePercent ?? product.creditUsagePercent));
-      if (pct != null) {
-        sessionUsed = pct;
-        break;
-      }
-    }
-    const weeklyReset = formatResetAt(config.currentPeriod && config.currentPeriod.end)
-      || formatResetAt(config.billingPeriodEnd);
-
-    if (weekly == null && sessionUsed == null) {
-      return detectedCard({
-        id: 'grok',
-        name,
-        provider,
-        icon: 'grok',
-        quotaState: 'unknown',
-        sessionResetText: 'Usage data malformed',
-        weeklyResetText: 'Quota unknown',
-        status: 'unknown'
-      });
-    }
-
-    return detectedCard({
-      id: 'grok',
-      name,
-      provider,
-      icon: 'grok',
-      quotaState: 'known',
-      sessionUsedPercent: sessionUsed,
-      weeklyUsedPercent: weekly,
-      sessionLabel: 'Product usage',
-      weeklyLabel: 'Billing period',
-      sessionResetText: sessionUsed == null ? 'No session window' : 'Active',
-      weeklyResetText: weeklyReset || (weekly == null ? 'No weekly window' : 'Active')
-    });
+    return grokBillingCardFromResponse(res, name, provider);
   } catch (err) {
     return detectedCard({
       id: 'grok',
@@ -1105,7 +1136,8 @@ async function getGrokUsage() {
       provider,
       icon: 'grok',
       quotaState: 'unknown',
-      sessionResetText: 'Quota unknown',
+      authState: 'signed_in',
+      sessionResetText: 'Signed in · billing unavailable',
       weeklyResetText: 'Grok billing read failed',
       status: 'unknown'
     });
@@ -1371,7 +1403,10 @@ module.exports = {
   _test: {
     attachRing,
     coercePercent,
+    detectedCard,
+    grokBillingCardFromResponse,
     quotaStatus,
+    parseGrokBillingConfig,
     readWithCache,
     resetReaderCache: () => readerCache.clear()
   }

@@ -37,3 +37,20 @@ test('fresh known data clears stale state and affects fingerprints', () => {
   assert.equal(merged.models[0].stale, false);
   assert.notEqual(quotaFingerprint(known), quotaFingerprint(merged));
 });
+
+test('auth-only changes affect quota fingerprints', () => {
+  const unknown = { models: [{ id: 'grok', quotaState: 'unknown', authState: 'unknown' }] };
+  const signedIn = { models: [{ id: 'grok', quotaState: 'unknown', authState: 'signed_in' }] };
+  assert.notEqual(quotaFingerprint(unknown), quotaFingerprint(signedIn));
+});
+
+test('expired auth bypasses stale last-known quota', () => {
+  const expired = {
+    models: [{ id: 'codex', quotaState: 'expired', authState: 'expired', sessionResetText: 'Sign in' }]
+  };
+  const merged = keepLastKnown(known, expired, start + 60_000, 300_000);
+  assert.equal(merged.models[0].quotaState, 'expired');
+  assert.equal(merged.models[0].authState, 'expired');
+  assert.equal(merged.models[0].ringPercent, undefined);
+  assert.equal(merged.models[0].stale, false);
+});
