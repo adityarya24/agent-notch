@@ -2,6 +2,12 @@
 
 All notable changes to Agent Notch are documented here.
 
+## [1.3.1] - 2026-09-01
+
+### Fixed
+
+- The collapse chevron now has its own gutter and no longer overlaps provider icons.
+
 ## [1.3.0] - 2026-09-01
 
 ### Added
