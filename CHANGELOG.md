@@ -2,6 +2,15 @@
 
 All notable changes to Agent Notch are documented here.
 
+## [1.3.6] - 2026-09-02
+
+### Fixed
+
+- The working-agent glow no longer washes over the collapse chevron. The chevron sat
+  6px from the ring's edge while the glow reaches about 8px, so an active ring tinted
+  it. The gutter is now 12px, and the tucked rail's offset moves with it so the
+  collapsed strip stays exactly as wide as before.
+
 ## [1.3.5] - 2026-09-02
 
 ### Fixed
