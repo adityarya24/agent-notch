@@ -2,6 +2,12 @@
 
 All notable changes to Agent Notch are documented here.
 
+## [1.2.1] - 2026-09-01
+
+### Fixed
+
+- Open but idle Claude, Gemini, Grok, Cursor, and OpenCode sessions no longer keep the activity ring glowing; session-backed providers now require a recent trustworthy work signal, while CPU fallback providers require sustained activity.
+
 ## [1.2.0] - 2026-09-01
 
 ### Added
