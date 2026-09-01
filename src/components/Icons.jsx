@@ -46,6 +46,14 @@ export function GeminiIcon({ className = "w-5 h-5" }) {
   );
 }
 
+export function AntigravityIcon({ className = "w-5 h-5" }) {
+  return (
+    <svg viewBox="0 0 24 24" fill="currentColor" className={className} aria-label="Antigravity">
+      <path d="M11.68 1.86 L12.82 1.93 L14.04 2.43 L15.19 3.51 L16.05 4.87 L17.12 7.59 L18.27 11.82 L19.63 15.98 L20.92 18.63 L22.86 20.99 L23.00 21.64 L22.71 22.00 L22.36 22.14 L21.42 22.00 L20.06 21.07 L18.77 19.78 L18.06 18.84 L16.05 15.48 L15.12 14.19 L13.90 13.18 L13.18 12.90 L12.32 12.75 L10.82 12.90 L9.89 13.33 L9.31 13.76 L7.95 15.48 L5.94 18.84 L5.23 19.78 L3.87 21.14 L2.43 22.07 L1.43 22.14 L1.07 21.93 L1.00 21.28 L1.14 20.99 L2.65 19.27 L4.08 16.69 L5.08 13.97 L7.16 6.80 L8.24 4.37 L8.88 3.44 L9.96 2.43 L10.89 2.00 L11.61 1.93Z" />
+    </svg>
+  );
+}
+
 export function OpenCodeIcon({ className = "w-5 h-5" }) {
   return (
     <svg viewBox="0 0 24 30" fill="currentColor" fillRule="evenodd" className={className} aria-label="OpenCode">

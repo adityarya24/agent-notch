@@ -49,4 +49,32 @@ function keepLastKnown(previous, next, now = Date.now(), staleTtlMs = DEFAULT_ST
   };
 }
 
-module.exports = { DEFAULT_STALE_TTL_MS, activityFingerprint, keepLastKnown, quotaFingerprint };
+// Opt-in observability: `NOTCH_DEBUG_PROVIDER=claude,grok` (or `all`) records what a
+// reader actually returned next to what the UI was shown. The persisted cache cannot
+// tell those apart -- a held-over reading and a fresh one both say "known".
+function debugProviderFilter(spec) {
+  const raw = String(spec || '').trim();
+  if (!raw) return null;
+  if (raw === '1' || raw.toLowerCase() === 'all') return () => true;
+  const ids = new Set(raw.split(',').map((part) => part.trim().toLowerCase()).filter(Boolean));
+  return ids.size ? (id) => ids.has(String(id).toLowerCase()) : null;
+}
+
+function formatProviderDebug(live, merged, spec, now = Date.now()) {
+  const match = debugProviderFilter(spec);
+  if (!match) return [];
+  const shownById = Object.fromEntries(((merged && merged.models) || []).map((model) => [model.id, model]));
+  const stamp = new Date(now).toISOString();
+  return (((live && live.models) || []))
+    .filter((model) => match(model.id))
+    .map((model) => {
+      const shown = shownById[model.id] || {};
+      return `[quota] ${stamp} id=${model.id} live=${model.quotaState}`
+        + ` rateLimited=${model.rateLimited ? 1 : 0} observedAt=${model.observedAt || '-'}`
+        + ` shown=${shown.quotaState || '-'} stale=${shown.stale ? 1 : 0}`
+        + ` note="${model.sessionResetText || ''}"`;
+    });
+}
+
+module.exports = { DEFAULT_STALE_TTL_MS, activityFingerprint, formatProviderDebug, keepLastKnown, quotaFingerprint };
+

@@ -1,7 +1,7 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
 
-const { activityFingerprint, keepLastKnown, quotaFingerprint } = require('../electron/quota-state');
+const { activityFingerprint, formatProviderDebug, keepLastKnown, quotaFingerprint } = require('../electron/quota-state');
 
 const start = Date.parse('2026-08-31T10:00:00.000Z');
 const known = {
@@ -58,4 +58,52 @@ test('expired auth bypasses stale last-known quota', () => {
 test('activity fingerprints are stable for reordered rings and change with live agents', () => {
   assert.equal(activityFingerprint(null, ['grok', 'codex']), activityFingerprint(null, ['codex', 'grok', 'codex']));
   assert.notEqual(activityFingerprint(null, ['codex']), activityFingerprint(null, ['codex', 'grok']));
+});
+
+test('provider debug logging stays off unless explicitly enabled', () => {
+  const live = { models: [{ id: 'claude', quotaState: 'known' }] };
+  const merged = { models: [{ id: 'claude', quotaState: 'known' }] };
+  assert.deepEqual(formatProviderDebug(live, merged, undefined), []);
+  assert.deepEqual(formatProviderDebug(live, merged, ''), []);
+  assert.deepEqual(formatProviderDebug(live, merged, '   '), []);
+});
+
+test('provider debug logging can target one provider, a list, or all', () => {
+  const live = {
+    models: [
+      { id: 'claude', quotaState: 'known' },
+      { id: 'grok', quotaState: 'known' },
+      { id: 'cursor', quotaState: 'known' }
+    ]
+  };
+  const merged = { models: live.models };
+  const ids = (spec) => formatProviderDebug(live, merged, spec)
+    .map((line) => line.match(/id=(\w+)/)[1]);
+
+  assert.deepEqual(ids('claude'), ['claude']);
+  assert.deepEqual(ids('claude, grok'), ['claude', 'grok']);
+  assert.deepEqual(ids('CURSOR'), ['cursor']);
+  assert.deepEqual(ids('all'), ['claude', 'grok', 'cursor']);
+  assert.deepEqual(ids('1'), ['claude', 'grok', 'cursor']);
+});
+
+test('provider debug logging separates the live reading from what the UI shows', () => {
+  const live = {
+    models: [{
+      id: 'claude',
+      quotaState: 'known',
+      rateLimited: true,
+      observedAt: '2026-09-01T18:44:18.504Z',
+      sessionResetText: 'Rate limited · retrying in 5m'
+    }]
+  };
+  const merged = { models: [{ id: 'claude', quotaState: 'known', stale: true }] };
+  const [line] = formatProviderDebug(live, merged, 'claude', Date.parse('2026-09-01T18:50:00.000Z'));
+
+  assert.match(line, /^\[quota\] 2026-09-01T18:50:00\.000Z id=claude/);
+  assert.match(line, /live=known/);
+  assert.match(line, /rateLimited=1/);
+  assert.match(line, /observedAt=2026-09-01T18:44:18\.504Z/);
+  assert.match(line, /shown=known stale=1/);
+  assert.match(line, /note="Rate limited · retrying in 5m"/);
 });
