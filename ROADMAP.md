@@ -56,10 +56,8 @@ MindSync dispatch has preemptive readers and headroom ranking. Notch stays a spe
 - [x] One-click Windows install (`install.bat` / `install.ps1`) plus `npm i -g github:adityarya24/agent-notch`.
 - [x] Antigravity Google OAuth client via env / gitignored `.env` (same names as MindSync).
 - [ ] Packaged NSIS installer (Windows; macOS later).
-- [ ] Desktop notification when an account crosses the alert threshold. The ring
-  already turns red, but a tucked rail is invisible — that is the case worth
-  interrupting for. Silent when MindSync is attached, since the job moves on its
-  own and there is nothing to act on. Asked for on X, 2026-08-31.
+- [x] Desktop notification when an account crosses the alert threshold while the
+  rail is tucked or hidden. Standalone; no MindSync hook. Asked for on X, 2026-08-31.
 
 ---
 

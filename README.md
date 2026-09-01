@@ -86,8 +86,9 @@ Agent Notch detects and tracks live usage for major coding agent ecosystems dire
   - 🔴 **Critical (80%+)**: Imminent rate-limit window.
 - **Hover Popover Cards**: Detailed dual-meter breakdown (Session vs. Weekly/Monthly) with exact humanized reset countdowns (e.g. *“Resets in 2h 15m”*).
 - **Compact Viewport**: Four rings stay in view; extra rings scroll. Drag a ring to put your most-used agents on top.
-- **Settings Drawer**: Toggle which CLIs appear, set the alert threshold, add custom CLIs, and turn handoff animation off.
+- **Settings Drawer**: Toggle which CLIs appear, set the alert threshold, add custom CLIs, turn tuck notifications on/off, and turn handoff animation off.
 - **Edge Collapse**: Hover the rail for a right-facing chevron to tuck it; a left-facing chevron on the same-height remnant pulls it back. Notch remembers the last chosen state.
+- **Tuck Notifications**: If a quota crosses the critical threshold while the rail is tucked or hidden, Windows shows a desktop toast. Click it to reveal the HUD. Expanded rings already show red, so those stay silent.
 
 ---
 

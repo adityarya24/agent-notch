@@ -44,12 +44,19 @@ export default function App() {
       });
     }
 
+    const unsubs = [];
     if (window.agentNotchAPI?.onUsageUpdated) {
-      const unsub = window.agentNotchAPI.onUsageUpdated((newData) => {
+      unsubs.push(window.agentNotchAPI.onUsageUpdated((newData) => {
         if (newData && newData.models) setData(newData);
-      });
-      return () => unsub?.();
+      }));
     }
+    if (window.agentNotchAPI?.onCollapsedChanged) {
+      unsubs.push(window.agentNotchAPI.onCollapsedChanged((collapsed) => {
+        collapseInitialized.current = true;
+        setIsCollapsed(Boolean(collapsed));
+      }));
+    }
+    return () => unsubs.forEach((unsub) => unsub?.());
   }, []);
 
   useEffect(() => {
