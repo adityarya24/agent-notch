@@ -20,5 +20,10 @@ contextBridge.exposeInMainWorld('agentNotchAPI', {
     const subscription = (_event, collapsed) => callback(collapsed);
     ipcRenderer.on('collapsed-changed', subscription);
     return () => ipcRenderer.removeListener('collapsed-changed', subscription);
+  },
+  onQuotaAlert: (callback) => {
+    const subscription = (_event, events) => callback(events);
+    ipcRenderer.on('quota-alert', subscription);
+    return () => ipcRenderer.removeListener('quota-alert', subscription);
   }
 });

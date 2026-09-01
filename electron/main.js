@@ -233,7 +233,13 @@ function maybeNotifyQuotaAlerts(previous, next) {
     defaultThreshold: config.alertThreshold || 80
   });
   alertFiredIds = result.firedIds;
-  if (!result.events.length || !Notification.isSupported()) return;
+  if (!result.events.length) return;
+  const windowVisible = Boolean(mainWindow && !mainWindow.isDestroyed() && mainWindow.isVisible());
+  if (windowVisible) {
+    mainWindow.webContents.send('quota-alert', result.events);
+    return;
+  }
+  if (!Notification.isSupported()) return;
   for (const event of result.events) {
     const note = new Notification({
       title: 'Agent Notch',
