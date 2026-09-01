@@ -3,7 +3,7 @@ const path = require('path');
 const https = require('https');
 const os = require('os');
 const { URL } = require('url');
-const { execFile } = require('child_process');
+const { exec, execFile } = require('child_process');
 const { DEFAULT_CONFIG, getLocalConfig, saveLocalConfig } = require('./config');
 const { sortModelsByOrder } = require('./model-order');
 
@@ -1197,9 +1197,8 @@ function runQuotaCommand(command) {
       resolve(null);
       return;
     }
-    const child = execFile(
-      process.platform === 'win32' ? 'cmd.exe' : 'sh',
-      process.platform === 'win32' ? ['/d', '/s', '/c', trimmed] : ['-c', trimmed],
+    const child = exec(
+      trimmed,
       { timeout: 5000, maxBuffer: 64 * 1024, windowsHide: true },
       (err, stdout) => {
         if (err) {
@@ -1339,7 +1338,7 @@ async function suggestCustomClis(config) {
   const custom = Array.isArray(config?.customAgents) ? config.customAgents : [];
   const taken = new Set(
     custom
-      .map((agent) => String(agent.command || agent.name || '').trim().toLowerCase())
+      .map((agent) => String(agent.activityProcess || agent.command || agent.name || '').trim().toLowerCase())
       .filter(Boolean)
   );
   const results = [];

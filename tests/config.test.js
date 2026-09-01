@@ -95,3 +95,26 @@ test('modelOrder keeps known ids, drops junk, and dedupes', () => {
   assert.deepEqual(result.modelOrder, ['grok', 'codex', 'custom_ok']);
   assert.deepEqual(config.sanitizeConfig({}).modelOrder, []);
 });
+
+test('migrates legacy custom CLI commands without mixing quota and activity commands', () => {
+  const result = config.sanitizeConfig({
+    customAgents: [
+      { id: 'custom_legacy', name: 'Legacy', quotaSource: 'unknown', command: 'aider' },
+      {
+        id: 'custom_command',
+        name: 'Command',
+        quotaSource: 'command',
+        command: 'node quota.js',
+        activityProcess: 'quota-agent.exe'
+      },
+      { id: 'custom_command_only', name: 'Command only', quotaSource: 'command', command: 'node quota.js' }
+    ]
+  });
+
+  assert.equal(result.customAgents[0].activityProcess, 'aider');
+  assert.equal(result.customAgents[0].command, 'aider');
+  assert.equal(result.customAgents[1].activityProcess, 'quota-agent.exe');
+  assert.equal(result.customAgents[1].command, 'node quota.js');
+  assert.equal(result.customAgents[2].activityProcess, '');
+  assert.equal(result.customAgents[2].command, 'node quota.js');
+});

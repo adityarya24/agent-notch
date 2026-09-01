@@ -3,9 +3,12 @@ const test = require('node:test');
 
 const {
   ProcessActivityTracker,
+  activityExecutable,
+  customProcessMappings,
   parseUnixSamples,
   parseWindowsSamples,
-  ringForProcess
+  ringForProcess,
+  ringsForProcess
 } = require('../electron/process_activity');
 
 test('maps only dedicated CLI process names', () => {
@@ -15,6 +18,46 @@ test('maps only dedicated CLI process names', () => {
   assert.equal(ringForProcess('Cursor.exe'), null);
   assert.equal(ringForProcess('Antigravity.exe'), null);
   assert.equal(ringForProcess('node.exe'), null);
+});
+
+test('accepts only exact native executables for custom activity', () => {
+  assert.equal(activityExecutable('fixture-agent.exe'), 'fixture-agent');
+  assert.equal(activityExecutable('"C:\\Program Files\\Fixture\\fixture-agent.exe"'), 'fixture-agent');
+  assert.equal(activityExecutable('node --flag'), null);
+  assert.equal(activityExecutable('node.exe'), null);
+  assert.equal(activityExecutable('python3'), null);
+  assert.equal(activityExecutable('python3.12'), null);
+  assert.equal(activityExecutable('bun'), null);
+  assert.equal(activityExecutable('javaw.exe'), null);
+  assert.equal(activityExecutable('dotnet'), null);
+  assert.equal(activityExecutable('zsh'), null);
+  assert.equal(activityExecutable('fixture.ps1'), null);
+  assert.equal(activityExecutable(''), null);
+});
+
+test('maps one native process to every configured custom ring', () => {
+  const mappings = customProcessMappings([
+    { id: 'custom_a', activityProcess: 'fixture-agent' },
+    { id: 'custom_b', activityProcess: 'fixture-agent.exe' },
+    { id: 'custom_bad', activityProcess: 'node --flag' },
+    { id: 'not_custom', activityProcess: 'fixture-agent' }
+  ]);
+  assert.deepEqual({ ...mappings }, { 'fixture-agent': ['custom_a', 'custom_b'] });
+  assert.deepEqual(ringsForProcess('fixture-agent.exe', mappings), ['custom_a', 'custom_b']);
+  assert.deepEqual(ringsForProcess('codex.exe', { codex: ['custom_codex'] }), ['codex', 'custom_codex']);
+});
+
+test('treats prototype-like process names as inert data', () => {
+  const mappings = customProcessMappings([
+    { id: 'custom_constructor', activityProcess: 'constructor' },
+    { id: 'custom_proto', activityProcess: '__proto__' }
+  ]);
+  assert.deepEqual(Object.keys(mappings).sort(), ['__proto__', 'constructor']);
+  assert.deepEqual(mappings.constructor, ['custom_constructor']);
+  assert.deepEqual(mappings.__proto__, ['custom_proto']);
+  assert.deepEqual(ringsForProcess('constructor', mappings), ['custom_constructor']);
+  assert.deepEqual(ringsForProcess('__proto__', mappings), ['custom_proto']);
+  assert.deepEqual(ringsForProcess('constructor', {}), []);
 });
 
 test('parses process samples without command lines', () => {
@@ -61,4 +104,23 @@ test('keeps an idle live CLI glowing only for the grace window', async () => {
   assert.deepEqual(tracker.current().map((row) => row.activeRing), ['claude']);
   now += 2;
   assert.deepEqual(tracker.current(), []);
+});
+
+test('lights a custom ring from its configured native process', async () => {
+  const requestedNames = [];
+  const samples = [
+    [{ pid: 9, name: 'fixture-agent.exe', cpuSeconds: 4 }],
+    [{ pid: 9, name: 'fixture-agent.exe', cpuSeconds: 4.05 }]
+  ];
+  const tracker = new ProcessActivityTracker({
+    sampler: async (names) => {
+      requestedNames.push(names);
+      return samples.shift();
+    }
+  });
+  const mappings = { 'fixture-agent': ['custom_fixture'] };
+
+  assert.deepEqual(await tracker.sample(mappings), []);
+  assert.deepEqual((await tracker.sample(mappings)).map((row) => row.activeRing), ['custom_fixture']);
+  assert.deepEqual(requestedNames, [['fixture-agent'], ['fixture-agent']]);
 });

@@ -1,15 +1,62 @@
 const { execFile } = require('child_process');
-const path = require('path');
 
 const PROCESS_GRACE_MS = 15 * 1000;
 const MIN_CPU_DELTA_SECONDS = 0.01;
+const BUILTIN_PROCESS_NAMES = ['codex', 'claude', 'grok', 'opencode', 'gemini', 'agy', 'antigravity-cli', 'cursor-agent'];
+const GENERIC_PROCESS_NAMES = new Set([
+  'bash', 'bun', 'cmd', 'deno', 'dotnet', 'fish', 'java', 'javaw', 'perl', 'php',
+  'powershell', 'pwsh', 'ruby', 'sh', 'zsh'
+]);
+
+function normalizeProcessName(rawName) {
+  return String(rawName || '')
+    .trim()
+    .split(/[\\/]/)
+    .pop()
+    .replace(/\.exe$/i, '')
+    .toLowerCase();
+}
 
 function ringForProcess(rawName) {
-  const name = path.basename(String(rawName || '')).replace(/\.exe$/i, '').toLowerCase();
+  const name = normalizeProcessName(rawName);
   if (['codex', 'claude', 'grok', 'opencode'].includes(name)) return name;
   if (['gemini', 'agy', 'antigravity-cli'].includes(name)) return 'gemini';
   if (name === 'cursor-agent') return 'cursor';
   return null;
+}
+
+function activityExecutable(rawCommand) {
+  const text = String(rawCommand || '').trim();
+  if (!text) return null;
+  const quoted = text.match(/^"([^"]+)"$/);
+  const executable = quoted ? quoted[1] : (/\s/.test(text) ? '' : text);
+  if (!executable || /\.(?:bat|cmd|ps1|sh)$/i.test(executable)) return null;
+  const name = normalizeProcessName(executable);
+  if (GENERIC_PROCESS_NAMES.has(name) || /^node(?:js)?(?:\d+(?:\.\d+)*)?$/.test(name) || /^pythonw?(?:\d+(?:\.\d+)*)?$/.test(name)) return null;
+  return /^[a-z0-9._-]{1,80}$/.test(name) ? name : null;
+}
+
+function customProcessMappings(customAgents) {
+  const mappings = Object.create(null);
+  for (const agent of customAgents || []) {
+    const id = String(agent?.id || '');
+    if (!/^custom_[A-Za-z0-9_-]+$/.test(id)) continue;
+    const name = activityExecutable(agent.activityProcess);
+    if (!name) continue;
+    mappings[name] = [...new Set([...(mappings[name] || []), id])];
+  }
+  return mappings;
+}
+
+function ringsForProcess(rawName, customMappings = {}) {
+  const name = normalizeProcessName(rawName);
+  const rings = new Set();
+  const builtin = ringForProcess(name);
+  if (builtin) rings.add(builtin);
+  const customRings = Object.prototype.hasOwnProperty.call(customMappings || {}, name)
+    && Array.isArray(customMappings[name]) ? customMappings[name] : [];
+  for (const id of customRings) rings.add(id);
+  return [...rings];
 }
 
 function cpuTimeSeconds(raw) {
@@ -61,9 +108,13 @@ function execSamples(file, args, parser) {
   });
 }
 
-function sampleAgentProcesses(platform = process.platform) {
+function sampleAgentProcesses(extraNames = [], platform = process.platform) {
   if (platform === 'win32') {
-    const command = "Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -in @('codex','claude','grok','opencode','gemini','agy','antigravity-cli','cursor-agent') } | Select-Object ProcessName,Id,CPU | ConvertTo-Json -Compress";
+    const names = [...new Set([...BUILTIN_PROCESS_NAMES, ...extraNames])]
+      .map(normalizeProcessName)
+      .filter((name) => /^[a-z0-9._-]{1,80}$/.test(name));
+    const literals = names.map((name) => `'${name}'`).join(',');
+    const command = `Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -in @(${literals}) } | Select-Object ProcessName,Id,CPU | ConvertTo-Json -Compress`;
     return execSamples('powershell.exe', ['-NoLogo', '-NoProfile', '-NonInteractive', '-Command', command], parseWindowsSamples);
   }
   return execSamples('ps', ['-A', '-o', 'pid=,comm=,time='], parseUnixSamples);
@@ -98,22 +149,24 @@ class ProcessActivityTracker {
     return [...this.live].sort();
   }
 
-  sample() {
+  sample(customMappings = {}) {
     if (this.pending) return this.pending;
-    this.pending = Promise.resolve(this.sampler()).then((samples) => {
+    this.pending = Promise.resolve(this.sampler(Object.keys(customMappings))).then((samples) => {
       const now = this.now();
       const nextCpu = new Map();
       const liveRings = new Set();
       for (const row of samples || []) {
-        const ring = ringForProcess(row.name);
-        if (!ring || !Number.isFinite(row.pid) || !Number.isFinite(row.cpuSeconds)) continue;
-        liveRings.add(ring);
-        const key = `${ring}:${row.pid}`;
-        const previous = this.previousCpu.get(key);
-        if (Number.isFinite(previous) && row.cpuSeconds - previous >= this.minCpuDeltaSeconds) {
-          this.activeUntil.set(ring, now + this.graceMs);
+        const rings = ringsForProcess(row.name, customMappings);
+        if (!rings.length || !Number.isFinite(row.pid) || !Number.isFinite(row.cpuSeconds)) continue;
+        for (const ring of rings) {
+          liveRings.add(ring);
+          const key = `${ring}:${row.pid}`;
+          const previous = this.previousCpu.get(key);
+          if (Number.isFinite(previous) && row.cpuSeconds - previous >= this.minCpuDeltaSeconds) {
+            this.activeUntil.set(ring, now + this.graceMs);
+          }
+          nextCpu.set(key, row.cpuSeconds);
         }
-        nextCpu.set(key, row.cpuSeconds);
       }
       for (const ring of this.activeUntil.keys()) {
         if (!liveRings.has(ring)) this.activeUntil.delete(ring);
@@ -129,12 +182,17 @@ class ProcessActivityTracker {
 }
 
 module.exports = {
+  BUILTIN_PROCESS_NAMES,
   MIN_CPU_DELTA_SECONDS,
   PROCESS_GRACE_MS,
   ProcessActivityTracker,
+  activityExecutable,
   cpuTimeSeconds,
+  customProcessMappings,
+  normalizeProcessName,
   parseUnixSamples,
   parseWindowsSamples,
   ringForProcess,
+  ringsForProcess,
   sampleAgentProcesses
 };

@@ -6,7 +6,7 @@ const { getAllInstalledAgentUsage, getLocalConfig, saveLocalConfig, probeCli, su
 const { readJobActivity } = require('./handoff_status');
 const { evaluateQuotaAlerts, formatAlertBody } = require('./alert-notify');
 const { mergeActiveRings, readDirectAgentActivity } = require('./direct_activity');
-const { ProcessActivityTracker } = require('./process_activity');
+const { customProcessMappings, ProcessActivityTracker } = require('./process_activity');
 const { runtimePath, ensureRuntimeDir, writePid, clearPid } = require('./runtime-state');
 const { activityFingerprint, quotaFingerprint, keepLastKnown } = require('./quota-state');
 const { PERSISTED_QUOTA_TTL_MS, readQuotaCache, writeQuotaCache } = require('./quota-cache');
@@ -30,6 +30,13 @@ function readLocalActivities() {
   // artifact adapters stay enabled even when no dedicated process name exists.
   const includeRings = [...new Set([...processActivity.liveRings(), 'cursor', 'gemini', 'opencode'])];
   return [...readDirectAgentActivity({ includeRings }), ...processActivity.current()];
+}
+
+function configuredProcessMappings() {
+  // Activity settings must reflect the just-saved file even when a slower
+  // quota refresh is still resolving with its older config snapshot.
+  const config = getLocalConfig();
+  return customProcessMappings(config?.customAgents);
 }
 
 const OVERLAY = {
@@ -273,7 +280,7 @@ async function refreshJobActivity() {
       refreshUsageData();
       return;
     }
-    await processActivity.sample();
+    await processActivity.sample(configuredProcessMappings());
     const activity = readJobActivity();
     const activeRings = mergeActiveRings(activity, readLocalActivities());
     const reduceMotion = reduceMotionEnabled(cachedQuotaState.config || getLocalConfig());
@@ -491,7 +498,7 @@ if (gotTheLock) app.whenReady().then(() => {
   });
 
   pollInterval = setInterval(() => refreshUsageData(), 60000);
-  processActivity.sample().finally(() => scheduleJobPoll([], 3000));
+  processActivity.sample(configuredProcessMappings()).finally(() => scheduleJobPoll([], 3000));
 });
 
 process.on('uncaughtException', (err) => {

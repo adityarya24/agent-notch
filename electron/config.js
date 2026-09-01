@@ -51,6 +51,8 @@ function sanitizeCustomAgent(value, index) {
   const id = /^custom_[A-Za-z0-9_-]+$/.test(rawId) ? rawId : `custom_${index}`;
   const quotaSource = QUOTA_SOURCES.has(value.quotaSource) ? value.quotaSource : 'unknown';
   const icon = ICONS.has(value.icon) ? value.icon : 'spark';
+  const command = boundedString(value.command, '', 1024);
+  const legacyActivityProcess = quotaSource === 'command' ? '' : command;
   return {
     id,
     name,
@@ -62,7 +64,8 @@ function sanitizeCustomAgent(value, index) {
     weeklyUsedPercent: boundedPercent(value.weeklyUsedPercent),
     sessionResetText: boundedString(value.sessionResetText, '', 120),
     weeklyResetText: boundedString(value.weeklyResetText, '', 120),
-    command: boundedString(value.command, '', 1024)
+    activityProcess: boundedString(value.activityProcess || legacyActivityProcess, '', 260),
+    command
   };
 }
 

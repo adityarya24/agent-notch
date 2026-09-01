@@ -199,7 +199,7 @@ You can add any custom coding assistant or local LLM CLI to the dock via the Set
 
 1. Click the **Settings Gear** at the bottom of the dock.
 2. Under **Custom Agents**, click **Add Custom CLI**.
-3. Supply a **Display Name** and an optional executable name on your `PATH`.
+3. Supply a **Display Name** and, for automatic live glow, the CLI's native process/executable name (for example `aider`).
 4. Choose a Quota Source:
    - **Command Stdout**: Point to a command/script that outputs JSON:
      ```json
@@ -209,9 +209,10 @@ You can add any custom coding assistant or local LLM CLI to the dock via the Set
      }
      ```
    - **Manual Snapshot**: Set fixed percentage values for manual tracking.
-   - **Unmanaged**: Displays as an unmetered ring. Direct live glow currently targets the six built-in provider adapters.
+   - **Unmanaged**: Displays as an unmetered ring; it can still glow while its configured native CLI process is doing CPU work.
 
 Custom quota commands run locally on each refresh. Only configure commands you trust.
+Activity Process and JSON Quota Command are separate: the first is used only for local process activity, while the second supplies percentages. Notch intentionally does not infer activity from generic wrapper runtimes such as `node`, `python`, PowerShell, or `.cmd`/`.ps1` scripts because that could light the wrong provider ring.
 
 ---
 
