@@ -9,7 +9,8 @@ const DEFAULT_CONFIG = Object.freeze({
   customAgents: Object.freeze([]),
   alertThreshold: 80,
   reduceMotion: false,
-  collapsed: false
+  collapsed: false,
+  notifyWhenTucked: true
 });
 const QUOTA_SOURCES = new Set(['unknown', 'manual', 'command']);
 const ICONS = new Set(['spark', 'claude', 'codex', 'gemini', 'cursor', 'grok', 'opencode']);
@@ -88,6 +89,7 @@ function sanitizeConfig(value) {
     alertThreshold,
     reduceMotion: Boolean(source.reduceMotion),
     collapsed: Boolean(source.collapsed),
+    notifyWhenTucked: source.notifyWhenTucked === undefined ? true : Boolean(source.notifyWhenTucked),
     modelOrder: sanitizeModelOrder(source.modelOrder, allowedIds)
   };
 }

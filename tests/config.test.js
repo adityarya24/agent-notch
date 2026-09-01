@@ -32,6 +32,7 @@ test('sanitizeConfig bounds untrusted values and preserves supported providers',
   assert.equal(result.alertThreshold, 100);
   assert.equal(result.reduceMotion, true);
   assert.equal(result.collapsed, true);
+  assert.equal(result.notifyWhenTucked, true);
   assert.equal(result.customAgents[0].name, 'Local Agent');
   assert.equal(result.customAgents[0].icon, 'spark');
   assert.equal(result.customAgents[0].sessionUsedPercent, 0);
@@ -78,6 +79,12 @@ test('saveLocalConfig writes sanitized JSON atomically', () => {
 test('new installs start expanded and a collapsed preference survives sanitization', () => {
   assert.equal(config.sanitizeConfig({}).collapsed, false);
   assert.equal(config.sanitizeConfig({ collapsed: true }).collapsed, true);
+});
+
+test('tuck notifications default on and can be switched off', () => {
+  assert.equal(config.sanitizeConfig({}).notifyWhenTucked, true);
+  assert.equal(config.sanitizeConfig({ notifyWhenTucked: false }).notifyWhenTucked, false);
+  assert.equal(config.sanitizeConfig({ notifyWhenTucked: 1 }).notifyWhenTucked, true);
 });
 
 test('modelOrder keeps known ids, drops junk, and dedupes', () => {

@@ -15,5 +15,10 @@ contextBridge.exposeInMainWorld('agentNotchAPI', {
     const subscription = (_event, data) => callback(data);
     ipcRenderer.on('usage-updated', subscription);
     return () => ipcRenderer.removeListener('usage-updated', subscription);
+  },
+  onCollapsedChanged: (callback) => {
+    const subscription = (_event, collapsed) => callback(collapsed);
+    ipcRenderer.on('collapsed-changed', subscription);
+    return () => ipcRenderer.removeListener('collapsed-changed', subscription);
   }
 });

@@ -2,6 +2,12 @@
 
 All notable changes to Agent Notch are documented here.
 
+## [Unreleased]
+
+### Added
+
+- Desktop toast when a quota crosses the critical threshold while the rail is tucked or hidden. Click the toast to reveal the HUD. Settings: **Notify when tucked**.
+
 ## [1.1.0] - 2026-08-31
 
 ### Added

@@ -42,6 +42,7 @@ export function SettingsModal({ isOpen, onClose, config, allDetectedIds, onSaveC
   });
   const [customAgents, setCustomAgents] = useState(Array.isArray(config?.customAgents) ? config.customAgents : []);
   const [reduceMotion, setReduceMotion] = useState(Boolean(config?.reduceMotion));
+  const [notifyWhenTucked, setNotifyWhenTucked] = useState(config?.notifyWhenTucked !== false);
   const [alertThreshold, setAlertThreshold] = useState(String(Number(config?.alertThreshold) || 80));
   const [showAdd, setShowAdd] = useState(false);
   const [draft, setDraft] = useState(emptyDraft());
@@ -92,6 +93,7 @@ export function SettingsModal({ isOpen, onClose, config, allDetectedIds, onSaveC
       enabledModels: nextEnabled || enabledMap,
       customAgents: nextCustom || customAgents,
       reduceMotion,
+      notifyWhenTucked,
       alertThreshold: normalizedThreshold()
     });
   };
@@ -365,6 +367,7 @@ export function SettingsModal({ isOpen, onClose, config, allDetectedIds, onSaveC
               enabledModels: enabledMap,
               customAgents,
               reduceMotion: next,
+              notifyWhenTucked,
               alertThreshold: normalizedThreshold()
             });
           }}
@@ -373,6 +376,27 @@ export function SettingsModal({ isOpen, onClose, config, allDetectedIds, onSaveC
           <span>Handoff animation</span>
           <span className={`px-1.5 py-0.5 rounded ${reduceMotion ? 'bg-white/10 text-neutral-500' : 'bg-emerald-500/20 text-emerald-300'}`}>
             {reduceMotion ? 'off' : 'on'}
+          </span>
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            const next = !notifyWhenTucked;
+            setNotifyWhenTucked(next);
+            onSaveConfig({
+              ...config,
+              enabledModels: enabledMap,
+              customAgents,
+              reduceMotion,
+              notifyWhenTucked: next,
+              alertThreshold: normalizedThreshold()
+            });
+          }}
+          className="flex items-center justify-between px-1 py-0.5 text-[10px] text-neutral-400"
+        >
+          <span>Notify when tucked</span>
+          <span className={`px-1.5 py-0.5 rounded ${notifyWhenTucked ? 'bg-emerald-500/20 text-emerald-300' : 'bg-white/10 text-neutral-500'}`}>
+            {notifyWhenTucked ? 'on' : 'off'}
           </span>
         </button>
         <button

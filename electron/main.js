@@ -1,9 +1,10 @@
-const { app, BrowserWindow, screen, ipcMain, Tray, Menu, globalShortcut, nativeImage, session } = require('electron');
+const { app, BrowserWindow, screen, ipcMain, Tray, Menu, globalShortcut, nativeImage, session, Notification } = require('electron');
 const path = require('path');
 const { pathToFileURL } = require('url');
 const fs = require('fs');
 const { getAllInstalledAgentUsage, getLocalConfig, saveLocalConfig, probeCli, suggestCustomClis } = require('./scrapers');
 const { readJobActivity } = require('./handoff_status');
+const { evaluateQuotaAlerts, formatAlertBody } = require('./alert-notify');
 const { runtimePath, ensureRuntimeDir, writePid, clearPid } = require('./runtime-state');
 const { activityFingerprint, quotaFingerprint, keepLastKnown } = require('./quota-state');
 const { PERSISTED_QUOTA_TTL_MS, readQuotaCache, writeQuotaCache } = require('./quota-cache');
@@ -16,8 +17,10 @@ let cachedQuotaState = null;
 let usageRefreshPromise = null;
 let overlayMode = 'dock';
 let overlayAnimation = null;
+let alertFiredIds = [];
 const logFile = runtimePath('electron_boot.log');
 const quotaCacheFile = runtimePath('quota-cache.json');
+const APP_USER_MODEL_ID = 'com.adityarya.agent-notch';
 
 const OVERLAY = {
   dock: { width: 360, height: 620 },
@@ -178,6 +181,50 @@ function publishState(next) {
   }
 }
 
+function ringsVisible() {
+  if (!mainWindow || mainWindow.isDestroyed() || !mainWindow.isVisible()) return false;
+  return overlayMode !== 'collapsed';
+}
+
+function revealNotch() {
+  const config = saveLocalConfig({ ...getLocalConfig(), collapsed: false });
+  snapOverlay('dock');
+  if (mainWindow && !mainWindow.isDestroyed()) {
+    if (!mainWindow.isVisible()) mainWindow.show();
+    mainWindow.focus();
+    mainWindow.webContents.send('collapsed-changed', false);
+  }
+  if (cachedQuotaState) {
+    publishState({
+      ...cachedQuotaState,
+      config,
+      reduceMotion: reduceMotionEnabled(config)
+    });
+  }
+}
+
+function maybeNotifyQuotaAlerts(previous, next) {
+  const config = (next && next.config) || getLocalConfig();
+  const result = evaluateQuotaAlerts({
+    previousModels: previous && previous.models,
+    nextModels: next && next.models,
+    visible: ringsVisible(),
+    notifyEnabled: config.notifyWhenTucked !== false,
+    firedIds: alertFiredIds,
+    defaultThreshold: config.alertThreshold || 80
+  });
+  alertFiredIds = result.firedIds;
+  if (!result.events.length || !Notification.isSupported()) return;
+  for (const event of result.events) {
+    const note = new Notification({
+      title: 'Agent Notch',
+      body: formatAlertBody(event)
+    });
+    note.on('click', revealNotch);
+    note.show();
+  }
+}
+
 async function refreshUsageData({ force = false } = {}) {
   if (usageRefreshPromise) return usageRefreshPromise;
   usageRefreshPromise = (async () => {
@@ -193,6 +240,7 @@ async function refreshUsageData({ force = false } = {}) {
         scheduleJobPoll(merged.jobActivity);
         return cachedQuotaState;
       }
+      maybeNotifyQuotaAlerts(cachedQuotaState, merged);
       publishState(merged);
       scheduleJobPoll(merged.jobActivity);
       return merged;
@@ -394,6 +442,7 @@ async function runCaptureIfRequested() {
 }
 
 if (gotTheLock) app.whenReady().then(() => {
+  app.setAppUserModelId(APP_USER_MODEL_ID);
   try {
     ensureRuntimeDir();
     const persisted = readQuotaCache(quotaCacheFile);
