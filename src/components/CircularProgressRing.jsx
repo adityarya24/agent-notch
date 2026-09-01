@@ -30,31 +30,22 @@ function CircularProgressRingInner({
   const idleBloom = known
     ? `drop-shadow(0 0 2px ${ringColor}aa) drop-shadow(0 0 6px ${ringColor}40)`
     : 'none';
-  const liveBloom = `drop-shadow(0 0 5px ${ringColor}) drop-shadow(0 0 14px ${ringColor})`;
+  const liveBloom = `drop-shadow(0 0 3px ${ringColor}) drop-shadow(0 0 7px ${ringColor}cc)`;
 
   return (
     <div className="relative flex items-center justify-center cursor-pointer group">
+      {/* A halo that hugs the ring rather than a blurred disc behind it. Rows sit
+          65px apart, so a filled bloom that grew past ~26px from the centre spilled
+          onto the neighbouring icons and washed out this ring's own percentage. */}
       {isLive && (
-        <>
-          <div
-            className={`absolute -inset-2 rounded-full pointer-events-none ${reduceMotion ? '' : 'notch-live-halo'}`}
-            style={{
-              background: ringColor,
-              opacity: reduceMotion ? 0.4 : undefined,
-              filter: 'blur(8px)',
-              animationDelay: reduceMotion ? undefined : `${liveDelayMs}ms`
-            }}
-          />
-          <div
-            className={`absolute inset-0 rounded-full pointer-events-none ${reduceMotion ? '' : 'notch-live-core'}`}
-            style={{
-              background: ringColor,
-              opacity: reduceMotion ? 0.28 : undefined,
-              filter: 'blur(4px)',
-              animationDelay: reduceMotion ? undefined : `${liveDelayMs}ms`
-            }}
-          />
-        </>
+        <div
+          className={`absolute inset-0 rounded-full pointer-events-none ${reduceMotion ? '' : 'notch-live-halo'}`}
+          style={{
+            boxShadow: `0 0 6px 1px ${ringColor}, inset 0 0 5px ${ringColor}`,
+            opacity: reduceMotion ? 0.5 : undefined,
+            animationDelay: reduceMotion ? undefined : `${liveDelayMs}ms`
+          }}
+        />
       )}
       <svg
         width={size}

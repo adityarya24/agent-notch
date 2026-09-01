@@ -17,22 +17,15 @@ body {
   -webkit-user-drag: none;
 }
 
+/* Opacity only. The old scale(1.22) grew the halo past the 12px gap between
+   rows, so a working agent lit up its neighbours as well as itself. */
 @keyframes notch-live-breathe {
-  0%, 100% { opacity: 0.45; transform: scale(1); }
-  50% { opacity: 1; transform: scale(1.22); }
+  0%, 100% { opacity: 0.45; }
+  50% { opacity: 1; }
 }
 
 .notch-live-halo {
   animation: notch-live-breathe 1.35s ease-in-out infinite;
-}
-
-@keyframes notch-live-core {
-  0%, 100% { opacity: 0.35; }
-  50% { opacity: 0.8; }
-}
-
-.notch-live-core {
-  animation: notch-live-core 1.35s ease-in-out infinite;
 }
 
 .notch-toast {
