@@ -21,6 +21,11 @@ let googleAccessCache = { token: null, expiresAt: 0 };
 const readerCache = new Map();
 const READER_POLL_MS = 60 * 1000;
 const READER_MAX_BACKOFF_MS = 5 * 60 * 1000;
+const RATE_LIMIT_COOLDOWN_MS = 5 * 60 * 1000;
+const RATE_LIMIT_MIN_COOLDOWN_MS = 60 * 1000;
+// How long a throttled reader may keep showing its last good reading before it
+// admits it no longer knows.
+const RATE_LIMIT_MAX_HOLD_MS = 15 * 60 * 1000;
 
 function readJson(filePath) {
   return JSON.parse(fs.readFileSync(filePath, 'utf8'));
@@ -165,7 +170,7 @@ function httpsRequest({ method = 'GET', url, headers = {}, body = null, timeoutM
         } catch (e) {
           json = null;
         }
-        resolve({ status: res.statusCode, json });
+        resolve({ status: res.statusCode, headers: res.headers, json });
       });
     });
     req.on('error', reject);
@@ -233,6 +238,77 @@ function parseClaudeWindows(payload) {
     weekly.reset = formatResetAt(payload.seven_day.resets_at);
   }
   return { session, weekly };
+}
+
+function retryAfterMs(headers, fallbackMs = RATE_LIMIT_COOLDOWN_MS) {
+  const seconds = Number.parseInt(String((headers && headers['retry-after']) ?? '').trim(), 10);
+  // Anthropic answers `retry-after: 0`, which would invite an immediate retry
+  // straight back into the limit. Treat anything non-positive as "use our own".
+  if (!Number.isFinite(seconds) || seconds <= 0) return fallbackMs;
+  return Math.min(Math.max(seconds * 1000, RATE_LIMIT_MIN_COOLDOWN_MS), RATE_LIMIT_MAX_HOLD_MS);
+}
+
+function formatWaitShort(ms) {
+  const minutes = Math.max(1, Math.round(ms / 60_000));
+  return `${minutes}m`;
+}
+
+function claudeCardFromResponse(res, name = 'Claude Code', provider = 'Anthropic · Claude') {
+  const base = { id: 'claude', name, provider, icon: 'claude' };
+  if (res && (res.status === 401 || res.status === 403)) {
+    return detectedCard({
+      ...base,
+      quotaState: 'expired',
+      sessionResetText: 'Sign in: claude auth login',
+      weeklyResetText: 'OAuth token expired',
+      status: 'expired'
+    });
+  }
+  if (res && res.status === 429) {
+    const waitMs = retryAfterMs(res.headers);
+    const card = detectedCard({
+      ...base,
+      quotaState: 'unknown',
+      authState: 'signed_in',
+      sessionResetText: `Rate limited · retrying in ${formatWaitShort(waitMs)}`,
+      weeklyResetText: 'Anthropic usage API is throttling',
+      status: 'unknown'
+    });
+    card.rateLimited = true;
+    card.retryAfterMs = waitMs;
+    return card;
+  }
+  if (!res || res.status !== 200 || !res.json) {
+    return detectedCard({
+      ...base,
+      quotaState: 'unknown',
+      sessionResetText: 'Usage endpoint unavailable',
+      weeklyResetText: 'Try again shortly',
+      status: 'unknown'
+    });
+  }
+
+  const { session, weekly } = parseClaudeWindows(res.json);
+  if (session.percent == null && weekly.percent == null) {
+    return detectedCard({
+      ...base,
+      quotaState: 'unknown',
+      sessionResetText: 'Usage data malformed',
+      weeklyResetText: 'Quota unknown',
+      status: 'unknown'
+    });
+  }
+
+  return detectedCard({
+    ...base,
+    quotaState: 'known',
+    sessionUsedPercent: session.percent,
+    weeklyUsedPercent: weekly.percent,
+    sessionLabel: '5h session',
+    weeklyLabel: 'Weekly',
+    sessionResetText: session.reset || (session.percent == null ? 'No session window' : 'Active'),
+    weeklyResetText: weekly.reset || (weekly.percent == null ? 'No weekly window' : 'Active')
+  });
 }
 
 async function fetchClaudeUsage(accessToken) {
@@ -312,59 +388,7 @@ async function getClaudeUsage() {
       });
     }
 
-    const res = await fetchClaudeUsage(packed.accessToken);
-    if (res.status === 401 || res.status === 403) {
-      return detectedCard({
-        id: 'claude',
-        name,
-        provider,
-        icon: 'claude',
-        quotaState: 'expired',
-        sessionResetText: 'Sign in: claude auth login',
-        weeklyResetText: 'OAuth token expired',
-        status: 'expired'
-      });
-    }
-    if (res.status !== 200 || !res.json) {
-      return detectedCard({
-        id: 'claude',
-        name,
-        provider,
-        icon: 'claude',
-        quotaState: 'unknown',
-        sessionResetText: 'Usage endpoint unavailable',
-        weeklyResetText: 'Try again shortly',
-        status: 'unknown'
-      });
-    }
-
-    const { session, weekly } = parseClaudeWindows(res.json);
-    if (session.percent == null && weekly.percent == null) {
-      return detectedCard({
-        id: 'claude',
-        name,
-        provider,
-        icon: 'claude',
-        quotaState: 'unknown',
-        sessionResetText: 'Usage data malformed',
-        weeklyResetText: 'Quota unknown',
-        status: 'unknown'
-      });
-    }
-
-    return detectedCard({
-      id: 'claude',
-      name,
-      provider,
-      icon: 'claude',
-      quotaState: 'known',
-      sessionUsedPercent: session.percent,
-      weeklyUsedPercent: weekly.percent,
-      sessionLabel: '5h session',
-      weeklyLabel: 'Weekly',
-      sessionResetText: session.reset || (session.percent == null ? 'No session window' : 'Active'),
-      weeklyResetText: weekly.reset || (weekly.percent == null ? 'No weekly window' : 'Active')
-    });
+    return claudeCardFromResponse(await fetchClaudeUsage(packed.accessToken), name, provider);
   } catch (err) {
     return detectedCard({
       id: 'claude',
@@ -1312,25 +1336,62 @@ function cloneResult(value) {
   return value && typeof value === 'object' ? { ...value } : value;
 }
 
-function readerDelay(failures) {
-  return Math.min(READER_POLL_MS * (2 ** Math.max(0, failures - 1)), READER_MAX_BACKOFF_MS);
+function readerDelay(failures, pollMs = READER_POLL_MS) {
+  return Math.min(pollMs * (2 ** Math.max(0, failures - 1)), READER_MAX_BACKOFF_MS);
+}
+
+function readerPollMs(entry) {
+  return Number.isFinite(entry.pollMs) && entry.pollMs > 0 ? entry.pollMs : READER_POLL_MS;
+}
+
+// A throttled provider has not failed — it just cannot answer yet. Keep showing the
+// last good reading rather than blanking the card, but only while it is recent.
+function holdLastKnown(previous, limited, now) {
+  if (!previous || previous.quotaState !== 'known') return limited;
+  const observedAt = Date.parse(String(previous.observedAt || ''));
+  if (!Number.isFinite(observedAt) || now - observedAt > RATE_LIMIT_MAX_HOLD_MS) return limited;
+  return {
+    ...previous,
+    attemptedAt: limited.attemptedAt,
+    rateLimited: true,
+    retryAfterMs: limited.retryAfterMs
+  };
 }
 
 function readWithCache(entry, { force = false, now = Date.now() } = {}) {
-  const existing = readerCache.get(entry.id) || { result: null, failures: 0, nextPollAt: 0, inFlight: null };
+  const existing = readerCache.get(entry.id)
+    || { result: null, failures: 0, nextPollAt: 0, cooldownUntil: 0, inFlight: null };
   if (existing.inFlight) return existing.inFlight.then(cloneResult);
+  // A rate-limit cooldown is not negotiable: forcing through it is what turns one
+  // 429 into a run of them.
+  if (existing.cooldownUntil > now) return Promise.resolve(cloneResult(existing.result));
   if (!force && existing.nextPollAt > now) return Promise.resolve(cloneResult(existing.result));
 
+  const pollMs = readerPollMs(entry);
   const inFlight = Promise.resolve()
     .then(() => entry.read())
     .then((raw) => {
       const attemptedAt = new Date(now).toISOString();
       const result = raw ? { ...raw, attemptedAt } : null;
+
+      if (result && result.rateLimited) {
+        const waitMs = Number.isFinite(result.retryAfterMs) ? result.retryAfterMs : RATE_LIMIT_COOLDOWN_MS;
+        const held = holdLastKnown(existing.result, result, now);
+        readerCache.set(entry.id, {
+          result: held,
+          failures: existing.failures,
+          nextPollAt: now + waitMs,
+          cooldownUntil: now + waitMs,
+          inFlight: null
+        });
+        return cloneResult(held);
+      }
+
       const available = result && result.quotaState === 'known';
       if (available) result.observedAt = attemptedAt;
       const failures = available ? 0 : existing.failures + 1;
-      const delay = available ? READER_POLL_MS : readerDelay(failures);
-      readerCache.set(entry.id, { result, failures, nextPollAt: now + delay, inFlight: null });
+      const delay = available ? pollMs : readerDelay(failures, pollMs);
+      readerCache.set(entry.id, { result, failures, nextPollAt: now + delay, cooldownUntil: 0, inFlight: null });
       return cloneResult(result);
     })
     .catch(() => {
@@ -1342,7 +1403,8 @@ function readWithCache(entry, { force = false, now = Date.now() } = {}) {
       readerCache.set(entry.id, {
         result,
         failures,
-        nextPollAt: now + readerDelay(failures),
+        nextPollAt: now + readerDelay(failures, pollMs),
+        cooldownUntil: 0,
         inFlight: null
       });
       return cloneResult(result);
@@ -1396,6 +1458,7 @@ module.exports = {
     attachRing,
     coercePercent,
     detectedCard,
+    claudeCardFromResponse,
     grokBillingCardFromResponse,
     parseCodexWindows,
     quotaStatus,

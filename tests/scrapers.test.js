@@ -315,3 +315,94 @@ test('CLI probe accepts an executable name but rejects shell expressions', async
   assert.ok(found.path);
   assert.deepEqual(await probeCli('node --version'), { found: false, path: null });
 });
+
+test('per-reader poll interval overrides the default cadence', async () => {
+  let calls = 0;
+  const entry = {
+    id: 'test_slow_poll',
+    pollMs: 300_000,
+    read: async () => { calls += 1; return { quotaState: 'known', ringPercent: 10 }; }
+  };
+  await _test.readWithCache(entry, { now: 1000 });
+  await _test.readWithCache(entry, { now: 61_001 });
+  assert.equal(calls, 1);
+  await _test.readWithCache(entry, { now: 301_001 });
+  assert.equal(calls, 2);
+});
+
+test('a rate limited reader keeps serving the last known reading', async () => {
+  let calls = 0;
+  const entry = {
+    id: 'test_rate_limit_hold',
+    read: async () => {
+      calls += 1;
+      return calls === 1
+        ? { quotaState: 'known', ringPercent: 42 }
+        : { quotaState: 'unknown', rateLimited: true, retryAfterMs: 300_000 };
+    }
+  };
+  await _test.readWithCache(entry, { now: 1000 });
+  const limited = await _test.readWithCache(entry, { now: 61_001 });
+  assert.equal(calls, 2);
+  assert.equal(limited.quotaState, 'known');
+  assert.equal(limited.ringPercent, 42);
+  assert.equal(limited.rateLimited, true);
+});
+
+test('a rate-limit cooldown cannot be bypassed by a forced refresh', async () => {
+  let calls = 0;
+  const entry = {
+    id: 'test_rate_limit_force',
+    read: async () => {
+      calls += 1;
+      return { quotaState: 'unknown', rateLimited: true, retryAfterMs: 300_000 };
+    }
+  };
+  await _test.readWithCache(entry, { now: 1000 });
+  assert.equal(calls, 1);
+  await _test.readWithCache(entry, { now: 2000, force: true });
+  await _test.readWithCache(entry, { now: 200_000, force: true });
+  assert.equal(calls, 1, 'force must not punch through a rate-limit cooldown');
+  await _test.readWithCache(entry, { now: 301_002, force: true });
+  assert.equal(calls, 2);
+});
+
+test('rate limits do not escalate the failure backoff', async () => {
+  let mode = 'limited';
+  let calls = 0;
+  const entry = {
+    id: 'test_rate_limit_no_escalation',
+    read: async () => {
+      calls += 1;
+      return mode === 'limited'
+        ? { quotaState: 'unknown', rateLimited: true, retryAfterMs: 60_000 }
+        : { quotaState: 'known', ringPercent: 7 };
+    }
+  };
+  await _test.readWithCache(entry, { now: 1000 });
+  await _test.readWithCache(entry, { now: 61_001 });
+  await _test.readWithCache(entry, { now: 121_002 });
+  assert.equal(calls, 3, 'cooldown stays flat instead of doubling');
+  mode = 'ok';
+  const recovered = await _test.readWithCache(entry, { now: 181_003 });
+  assert.equal(recovered.quotaState, 'known');
+  assert.equal(recovered.ringPercent, 7);
+});
+
+test('the Claude reader reports a 429 as a rate limit, not an outage', () => {
+  const card = _test.claudeCardFromResponse({ status: 429, headers: { 'retry-after': '0' } });
+  assert.equal(card.rateLimited, true);
+  assert.equal(card.quotaState, 'unknown');
+  assert.match(card.sessionResetText, /[Rr]ate limited/);
+  assert.ok(card.retryAfterMs >= 60_000, 'a bogus retry-after: 0 must not mean retry immediately');
+});
+
+test('the Claude reader honours a sane retry-after header', () => {
+  const card = _test.claudeCardFromResponse({ status: 429, headers: { 'retry-after': '120' } });
+  assert.equal(card.retryAfterMs, 120_000);
+});
+
+test('the rate limit label reads as a wait, not a reset', () => {
+  const card = _test.claudeCardFromResponse({ status: 429, headers: { 'retry-after': '120' } });
+  assert.equal(card.sessionResetText, 'Rate limited · retrying in 2m');
+});

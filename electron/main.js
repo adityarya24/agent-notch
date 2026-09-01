@@ -8,7 +8,7 @@ const { evaluateQuotaAlerts, formatAlertBody } = require('./alert-notify');
 const { mergeActiveRings, readDirectAgentActivity } = require('./direct_activity');
 const { customProcessMappings, ProcessActivityTracker } = require('./process_activity');
 const { runtimePath, ensureRuntimeDir, writePid, clearPid } = require('./runtime-state');
-const { activityFingerprint, quotaFingerprint, keepLastKnown } = require('./quota-state');
+const { activityFingerprint, quotaFingerprint, keepLastKnown, formatProviderDebug } = require('./quota-state');
 const { PERSISTED_QUOTA_TTL_MS, readQuotaCache, writeQuotaCache } = require('./quota-cache');
 
 let mainWindow = null;
@@ -256,6 +256,12 @@ async function refreshUsageData({ force = false } = {}) {
     try {
       const liveData = attachActivity(await getAllInstalledAgentUsage({ force }));
       const merged = keepLastKnown(cachedQuotaState, liveData, Date.now(), PERSISTED_QUOTA_TTL_MS);
+      const debugLines = formatProviderDebug(liveData, merged, process.env.NOTCH_DEBUG_PROVIDER);
+      if (debugLines.length) {
+        try {
+          fs.appendFileSync(logFile, debugLines.map((line) => `${line}\n`).join(''));
+        } catch (e) {}
+      }
       merged.jobActivity = liveData.jobActivity;
       merged.activeRings = liveData.activeRings;
       merged.handoff = liveData.handoff;
