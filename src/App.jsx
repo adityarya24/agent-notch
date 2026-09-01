@@ -317,7 +317,7 @@ export default function App() {
 
       {/* Side Notch Dock Body with Smooth Scrolling & Settings Gear */}
       <div
-        className={`group/rail relative bg-[#09090b]/98 backdrop-blur-2xl border-l-2 border-t-2 border-b-2 py-3 px-2 rounded-l-[26px] z-40 overflow-hidden flex flex-col items-center justify-between gap-2 transition-[transform,border-color,opacity,box-shadow] ease-[cubic-bezier(0.16,1,0.3,1)] ${
+        className={`group/rail relative bg-[#09090b]/98 backdrop-blur-2xl border-l-2 border-t-2 border-b-2 py-3 pl-1 pr-2 rounded-l-[26px] z-40 overflow-hidden flex flex-row items-center gap-0.5 transition-[transform,border-color,opacity,box-shadow] ease-[cubic-bezier(0.16,1,0.3,1)] ${
           isCollapsed
             ? 'translate-x-[50px] opacity-100'
             : 'translate-x-0 border-[#27272a] hover:border-[#34d399]/35 opacity-100 shadow-2xl shadow-black/95'
@@ -345,10 +345,10 @@ export default function App() {
           title={isCollapsed ? 'Reveal Agent Notch' : 'Tuck away Agent Notch'}
           aria-label={isCollapsed ? 'Reveal Agent Notch' : 'Tuck away Agent Notch'}
           aria-expanded={!isCollapsed}
-          className={`absolute z-50 flex items-center justify-center top-1/2 -translate-y-1/2 focus:outline-none transition-[opacity,color] duration-200 ${
+          className={`relative z-50 shrink-0 self-center flex items-center justify-center focus:outline-none transition-[opacity,color] duration-200 ${
             isCollapsed
-              ? 'left-0 w-4 h-10 hover:opacity-90'
-              : `left-1 w-[18px] h-8 text-neutral-400 hover:text-emerald-300 ${
+              ? 'w-4 h-10 hover:opacity-90'
+              : `w-4 h-8 text-neutral-400 hover:text-emerald-300 ${
                   hoveredModel || isSettingsOpen
                     ? 'opacity-0 pointer-events-none'
                     : 'opacity-0 group-hover/rail:opacity-100'
@@ -364,7 +364,7 @@ export default function App() {
 
         <div
           aria-hidden={isCollapsed}
-          className={`ml-auto flex flex-col items-center justify-between gap-2 transition-[opacity,filter] ${isCollapsed ? 'pointer-events-none opacity-0 blur-[1px]' : 'opacity-100 blur-0'}`}
+          className={`flex flex-col items-center justify-between gap-2 min-w-[46px] transition-[opacity,filter] ${isCollapsed ? 'pointer-events-none opacity-0 blur-[1px]' : 'opacity-100 blur-0'}`}
           style={{ transitionDuration: reduceMotion ? '0ms' : '180ms' }}
         >
         {/* Scrollable Model Rings List */}
