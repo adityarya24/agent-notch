@@ -13,6 +13,10 @@ All notable changes to Agent Notch are documented here.
   forced refresh cannot punch through, it no longer escalates the failure backoff, and
   the last good reading keeps showing (bounded to 15 minutes) instead of blanking.
 
+- The Antigravity card carried the Gemini spark, which belongs to a different product.
+  It now uses the Antigravity mark, traced from the icon the installed app ships.
+  `gemini` remains a valid icon id with its original artwork for saved custom agents.
+
 ### Added
 
 - `NOTCH_DEBUG_PROVIDER=claude,grok` (or `all`) logs what each reader returned next to
