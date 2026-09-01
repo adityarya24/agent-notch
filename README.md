@@ -59,7 +59,7 @@ Agent Notch detects and tracks live usage for major coding agent ecosystems dire
 | **Cursor** | Monthly Period Usage | Cursor IDE local state (`state.vscdb` / session token) |
 | **Grok CLI** | Included quota when exposed | Grok CLI local configuration & billing endpoint; signed-in unavailable usage stays explicit |
 | **OpenCode Go** | Go Subscription Usage | OpenCode Go plan quota (excludes BYOK local engines) |
-| **Custom CLIs** | Dynamic / Custom | Automatic PATH detection; JSON stdout reader or manual snapshot |
+| **Custom CLIs** | Dynamic / Custom | Known-app suggestions or explicit `notch provider register`; JSON stdout reader or manual snapshot |
 
 ---
 
