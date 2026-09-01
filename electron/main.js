@@ -39,12 +39,15 @@ function configuredProcessMappings() {
   return customProcessMappings(config?.customAgents);
 }
 
+// The hover card is 280px and sits left of the rail with an 8px margin, so the
+// dock has to be wider than card + margin + rail or the card is clipped against
+// the window edge.
 const OVERLAY = {
-  dock: { width: 360, height: 620 },
+  dock: { width: 380, height: 620 },
   settings: { width: 440, height: 640 },
   // Collapsing tucks the full-size rail into the screen edge. Keeping the
   // window footprint stable avoids a detached mini-window and visual jump.
-  collapsed: { width: 360, height: 620 }
+  collapsed: { width: 380, height: 620 }
 };
 
 function reduceMotionEnabled(cfg) {
