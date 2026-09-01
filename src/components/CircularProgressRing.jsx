@@ -41,7 +41,7 @@ function CircularProgressRingInner({
         <div
           className={`absolute inset-0 rounded-full pointer-events-none ${reduceMotion ? '' : 'notch-live-halo'}`}
           style={{
-            boxShadow: `0 0 6px 1px ${ringColor}, inset 0 0 5px ${ringColor}`,
+            boxShadow: `0 0 7px 1px ${ringColor}`,
             opacity: reduceMotion ? 0.5 : undefined,
             animationDelay: reduceMotion ? undefined : `${liveDelayMs}ms`
           }}
@@ -77,8 +77,26 @@ function CircularProgressRingInner({
         />
       </svg>
 
-      <div className={`absolute inset-[4px] z-[2] rounded-full bg-[#18181b] flex items-center justify-center transition-colors duration-200 ${isActive ? 'ring-1 ring-white/30' : 'group-hover:bg-[#27272a]'}`}>
-        <div className="w-4 h-4 flex items-center justify-center leading-none scale-90" style={{ color: ringColor }}>
+      <div className={`absolute inset-[4px] z-[2] rounded-full bg-[#18181b] flex items-center justify-center overflow-hidden transition-colors duration-200 ${isActive ? 'ring-1 ring-white/30' : 'group-hover:bg-[#27272a]'}`}>
+        {/* The pulse the user actually watches. It lives inside the hub, so it can
+            be bright without reaching the next row -- the hub is only 30px wide. */}
+        {isLive && (
+          <div
+            className={`absolute inset-0 pointer-events-none ${reduceMotion ? '' : 'notch-live-halo'}`}
+            style={{
+              background: `radial-gradient(circle, ${ringColor}80 0%, ${ringColor}26 55%, transparent 75%)`,
+              opacity: reduceMotion ? 0.55 : undefined,
+              animationDelay: reduceMotion ? undefined : `${liveDelayMs}ms`
+            }}
+          />
+        )}
+        <div
+          className="relative z-[1] w-4 h-4 flex items-center justify-center leading-none scale-90"
+          style={{
+            color: ringColor,
+            filter: isLive ? `drop-shadow(0 0 3px ${ringColor}) drop-shadow(0 0 6px ${ringColor}99)` : undefined
+          }}
+        >
           {children}
         </div>
       </div>

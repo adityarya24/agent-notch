@@ -2,6 +2,15 @@
 
 All notable changes to Agent Notch are documented here.
 
+## [1.3.5] - 2026-09-02
+
+### Fixed
+
+- The working-agent pulse is visible again, and now the icon itself glows with it.
+  Containing the glow in 1.3.4 left only a faint outer ring: the halo's inner glow was
+  drawn under the opaque icon hub, so it never showed. The pulse now lives inside the
+  hub, where it can be bright without reaching the next row.
+
 ## [1.3.4] - 2026-09-02
 
 ### Fixed
