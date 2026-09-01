@@ -9,6 +9,12 @@ const {
   readPid: readRuntimePid,
   clearPid: clearRuntimePid
 } = require('../electron/runtime-state');
+const {
+  discoverProviders,
+  listProviders,
+  registerProvider,
+  removeProvider
+} = require('../electron/provider-registry');
 
 const rootDir = path.resolve(__dirname, '..');
 const distIndex = path.join(rootDir, 'dist', 'index.html');
@@ -32,7 +38,12 @@ function resolveElectron() {
   return win;
 }
 
-const electronPath = resolveElectron();
+let cachedElectronPath = null;
+
+function getElectronPath() {
+  if (!cachedElectronPath) cachedElectronPath = resolveElectron();
+  return cachedElectronPath;
+}
 
 function readLegacyPid() {
   try {
@@ -118,6 +129,7 @@ function sleep(ms) {
 }
 
 function spawnElectron() {
+  const electronPath = getElectronPath();
   if (!fs.existsSync(electronPath)) {
     throw new Error(`Electron binary missing at ${electronPath}. From the repo run: npm install`);
   }
@@ -205,6 +217,7 @@ function vbsQuote(value) {
 
 function enableAutostart() {
   try {
+    const electronPath = getElectronPath();
     const startupVbs = startupVbsPath();
     const vbs = [
       'Set WshShell = CreateObject("WScript.Shell")',
@@ -230,6 +243,150 @@ function disableAutostart() {
   } catch (e) {}
 }
 
+function parseProviderOptions(tokens) {
+  const positionals = [];
+  const options = {};
+  for (let i = 0; i < tokens.length; i += 1) {
+    const token = String(tokens[i] || '');
+    if (!token.startsWith('--')) {
+      positionals.push(token);
+      continue;
+    }
+    const raw = token.slice(2);
+    const equals = raw.indexOf('=');
+    const key = (equals >= 0 ? raw.slice(0, equals) : raw).trim();
+    if (!key) continue;
+    if (equals >= 0) {
+      options[key] = raw.slice(equals + 1);
+      continue;
+    }
+    const next = tokens[i + 1];
+    if (next != null && !String(next).startsWith('--')) {
+      options[key] = String(next);
+      i += 1;
+    } else {
+      options[key] = true;
+    }
+  }
+  return { positionals, options };
+}
+
+function providerJsonRequested(options) {
+  return options.json === true || String(options.json || '').toLowerCase() === 'true';
+}
+
+function providerHelp() {
+  console.log(`Provider commands (local config only):
+  notch provider add <id> --name "Name" --process Agent.exe [options]
+  notch provider register <id> --name "Name" --process Agent.exe [options]
+  notch provider list [--json]
+  notch provider remove <id-or-name> [--json]
+  notch provider discover [--json]
+
+Add/register options:
+  --quota none|manual|command    Default: none (stored as unknown quota)
+  --session <0-100>              Manual session usage percent
+  --weekly <0-100>               Manual weekly usage percent
+  --command "..."                Trusted local command that prints quota JSON
+  --provider "..."               Provider label shown in the HUD
+  --icon auto|spark|claude|codex|gemini|cursor|grok|opencode
+
+Discovery only returns suggestions. It never edits config. Known apps such as
+ZCode can be found from a cataloged install path or running native process even
+when no zcode command is on PATH. Use Settings or add/register to opt in.
+Activity processes must be exact native executable names; generic runtimes and
+shell wrappers are rejected.
+`);
+}
+
+function printProviderList(providers, asJson) {
+  if (asJson) {
+    console.log(JSON.stringify(providers, null, 2));
+    return;
+  }
+  if (!providers.length) {
+    console.log('No custom providers registered.');
+    return;
+  }
+  for (const provider of providers) {
+    const quota = provider.quotaSource === 'unknown' ? 'none' : provider.quotaSource;
+    console.log(`${provider.id}\t${provider.name}\tprocess=${provider.activityProcess}\tquota=${quota}\ticon=${provider.icon}`);
+  }
+}
+
+function printProviderDiscovery(suggestions, asJson) {
+  if (asJson) {
+    console.log(JSON.stringify(suggestions, null, 2));
+    return;
+  }
+  if (!suggestions.length) {
+    console.log('No cataloged providers detected.');
+    return;
+  }
+  console.log('Detected providers (suggestions only; config unchanged):');
+  for (const item of suggestions) {
+    const evidence = item.evidence || 'detected';
+    const location = item.path || item.process || item.app || item.command;
+    console.log(`  ${item.name} — ${evidence}${location ? ` (${location})` : ''}; add with Settings or notch provider add`);
+  }
+}
+
+async function runProviderCommand(providerArgs) {
+  const subcommand = String(providerArgs[0] || 'help').toLowerCase();
+  const parsed = parseProviderOptions(providerArgs.slice(1));
+  const { positionals, options } = parsed;
+  const asJson = providerJsonRequested(options);
+  if (subcommand === 'help' || options.help) {
+    providerHelp();
+    return;
+  }
+
+  if (subcommand === 'add' || subcommand === 'register') {
+    const result = registerProvider({
+      id: options.id || positionals[0],
+      name: options.name || options.displayName,
+      provider: options.provider,
+      activityProcess: options.process || options['activity-process'],
+      quota: options.quota || options['quota-source'],
+      quotaCommand: options.command || options['quota-command'],
+      session: options.session,
+      weekly: options.weekly,
+      icon: options.icon || 'auto',
+      modelName: options.model
+    });
+    if (asJson) {
+      console.log(JSON.stringify({ ...result, created: result.created }, null, 2));
+    } else {
+      const quota = result.agent.quotaSource === 'unknown' ? 'none' : result.agent.quotaSource;
+      console.log(`Provider ${result.created ? 'registered' : 'updated'}: ${result.agent.name} (${result.agent.id})`);
+      console.log(`  process: ${result.agent.activityProcess}`);
+      console.log(`  quota:   ${quota}`);
+      console.log(`  icon:    ${result.agent.icon}`);
+    }
+    return;
+  }
+
+  if (subcommand === 'list') {
+    printProviderList(listProviders(), asJson);
+    return;
+  }
+
+  if (subcommand === 'remove' || subcommand === 'rm') {
+    const selector = options.id || options.name || positionals[0];
+    const result = removeProvider(selector);
+    if (asJson) console.log(JSON.stringify(result.removed, null, 2));
+    else console.log(`Removed custom provider: ${result.removed.name} (${result.removed.id})`);
+    return;
+  }
+
+  if (subcommand === 'discover' || subcommand === 'detect') {
+    printProviderDiscovery(await discoverProviders(), asJson);
+    return;
+  }
+
+  throw new Error(`Unknown provider command: ${subcommand}`);
+}
+
 function printHelp() {
   console.log(`Agent Notch — right-edge AI quota HUD
 
@@ -247,6 +404,7 @@ Commands:
   notch disable-startup Remove logon launch
   notch smoke           Glow demo on the live HUD (no quota burn)
   notch smoke --clear   Remove leftover smoke jobs
+  notch provider help   Register, list, remove, or discover custom providers
   notch help            This text
 
 Hotkey Ctrl+Shift+U only works while Notch is running (hide/show).
@@ -292,6 +450,12 @@ switch (command) {
     break;
   case 'smoke':
     runSmoke();
+    break;
+  case 'provider':
+    runProviderCommand(args.slice(1)).catch((err) => {
+      console.error(`Provider command failed: ${err.message || err}`);
+      process.exitCode = 1;
+    });
     break;
   case 'help':
   case '--help':

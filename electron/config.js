@@ -140,6 +140,8 @@ function saveLocalConfig(value) {
 module.exports = {
   BUILTIN_IDS,
   DEFAULT_CONFIG,
+  ICONS,
+  QUOTA_SOURCES,
   appDataRoot,
   configPath,
   getLocalConfig,

@@ -6,6 +6,7 @@ const { URL } = require('url');
 const { exec, execFile } = require('child_process');
 const { DEFAULT_CONFIG, getLocalConfig, saveLocalConfig } = require('./config');
 const { sortModelsByOrder } = require('./model-order');
+const providerRegistry = require('./provider-registry');
 
 const homeDir = os.homedir();
 
@@ -1298,60 +1299,6 @@ async function getCustomUsage(agent) {
   });
 }
 
-const SUGGEST_CLIS = [
-  { name: 'Aider', command: 'aider', icon: 'spark' },
-  { name: 'GitHub Copilot', command: 'copilot', icon: 'codex' },
-  { name: 'Amp', command: 'amp', icon: 'spark' },
-  { name: 'Goose', command: 'goose', icon: 'spark' },
-  { name: 'Crush', command: 'crush', icon: 'spark' },
-  { name: 'Qwen', command: 'qwen', icon: 'spark' }
-];
-
-function probeCli(bin) {
-  return new Promise((resolve) => {
-    const name = String(bin || '').trim();
-    if (!name || !/^[A-Za-z0-9._\\/:-]+$/.test(name)) {
-      resolve({ found: false, path: null });
-      return;
-    }
-    const tool = process.platform === 'win32' ? 'where.exe' : 'which';
-    execFile(
-      tool,
-      process.platform === 'win32' ? [name] : [name],
-      { timeout: 3000, windowsHide: true, maxBuffer: 16 * 1024 },
-      (err, stdout) => {
-        if (err) {
-          resolve({ found: false, path: null });
-          return;
-        }
-        const first = String(stdout)
-          .split(/\r?\n/)
-          .map((line) => line.trim())
-          .find(Boolean) || null;
-        resolve({ found: Boolean(first), path: first });
-      }
-    );
-  });
-}
-
-async function suggestCustomClis(config) {
-  const custom = Array.isArray(config?.customAgents) ? config.customAgents : [];
-  const taken = new Set(
-    custom
-      .map((agent) => String(agent.activityProcess || agent.command || agent.name || '').trim().toLowerCase())
-      .filter(Boolean)
-  );
-  const results = [];
-  for (const item of SUGGEST_CLIS) {
-    if (taken.has(item.command.toLowerCase()) || taken.has(item.name.toLowerCase())) continue;
-    const probe = await probeCli(item.command);
-    if (probe.found) {
-      results.push({ ...item, path: probe.path });
-    }
-  }
-  return results;
-}
-
 const BUILTIN_READERS = [
   { id: 'codex', name: 'Codex', provider: 'OpenAI', read: getCodexUsage },
   { id: 'claude', name: 'Claude Code', provider: 'Anthropic', read: getClaudeUsage },
@@ -1443,8 +1390,8 @@ module.exports = {
   getAllInstalledAgentUsage,
   getLocalConfig,
   saveLocalConfig,
-  probeCli,
-  suggestCustomClis,
+  probeCli: providerRegistry.probeCli,
+  suggestCustomClis: providerRegistry.suggestCustomClis,
   _test: {
     attachRing,
     coercePercent,
