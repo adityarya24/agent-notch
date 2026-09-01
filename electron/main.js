@@ -6,6 +6,7 @@ const { getAllInstalledAgentUsage, getLocalConfig, saveLocalConfig, probeCli, su
 const { readJobActivity } = require('./handoff_status');
 const { runtimePath, ensureRuntimeDir, writePid, clearPid } = require('./runtime-state');
 const { activityFingerprint, quotaFingerprint, keepLastKnown } = require('./quota-state');
+const { PERSISTED_QUOTA_TTL_MS, readQuotaCache, writeQuotaCache } = require('./quota-cache');
 
 let mainWindow = null;
 let tray = null;
@@ -16,6 +17,7 @@ let usageRefreshPromise = null;
 let overlayMode = 'dock';
 let overlayAnimation = null;
 const logFile = runtimePath('electron_boot.log');
+const quotaCacheFile = runtimePath('quota-cache.json');
 
 const OVERLAY = {
   dock: { width: 360, height: 620 },
@@ -181,10 +183,11 @@ async function refreshUsageData({ force = false } = {}) {
   usageRefreshPromise = (async () => {
     try {
       const liveData = attachActivity(await getAllInstalledAgentUsage({ force }));
-      const merged = keepLastKnown(cachedQuotaState, liveData);
+      const merged = keepLastKnown(cachedQuotaState, liveData, Date.now(), PERSISTED_QUOTA_TTL_MS);
       merged.jobActivity = liveData.jobActivity;
       merged.handoff = liveData.handoff;
       merged.reduceMotion = liveData.reduceMotion;
+      writeQuotaCache(quotaCacheFile, merged);
       if (cachedQuotaState && quotaFingerprint(cachedQuotaState) === quotaFingerprint(merged)) {
         cachedQuotaState = { ...merged, lastUpdated: liveData.lastUpdated };
         scheduleJobPoll(merged.jobActivity);
@@ -393,6 +396,14 @@ async function runCaptureIfRequested() {
 if (gotTheLock) app.whenReady().then(() => {
   try {
     ensureRuntimeDir();
+    const persisted = readQuotaCache(quotaCacheFile);
+    if (persisted) {
+      cachedQuotaState = {
+        ...persisted,
+        config: getLocalConfig(),
+        reduceMotion: reduceMotionEnabled(getLocalConfig())
+      };
+    }
     fs.appendFileSync(logFile, `[boot] pid=${process.pid} capture=${process.env.NOTCH_CAPTURE || ''}\n`);
     writePid(process.pid);
   } catch (err) {
