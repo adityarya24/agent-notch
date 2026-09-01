@@ -1,9 +1,10 @@
 const DEFAULT_STALE_TTL_MS = 5 * 60 * 1000;
 
-function activityFingerprint(activity) {
-  if (!activity) return '';
+function activityFingerprint(activity, activeRings = []) {
+  const rings = [...new Set(activeRings || [])].sort().join(',');
+  if (!activity) return rings;
   const handoff = activity.handoff;
-  return `${activity.jobId || ''}:${activity.jobStatus || ''}:${activity.activeAgent || ''}:${handoff ? `${handoff.at}:${handoff.from}->${handoff.to}` : ''}`;
+  return `${rings}|${activity.jobId || ''}:${activity.jobStatus || ''}:${activity.activeAgent || ''}:${handoff ? `${handoff.at}:${handoff.from}->${handoff.to}` : ''}`;
 }
 
 function quotaFingerprint(data) {
@@ -21,7 +22,7 @@ function quotaFingerprint(data) {
       model.lastError || ''
     ].join(':'))
     .join('|');
-  return `${models}|${activityFingerprint(data.jobActivity)}`;
+  return `${models}|${activityFingerprint(data.jobActivity, data.activeRings)}`;
 }
 
 function keepLastKnown(previous, next, now = Date.now(), staleTtlMs = DEFAULT_STALE_TTL_MS) {

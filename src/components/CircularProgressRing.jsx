@@ -8,6 +8,7 @@ function CircularProgressRingInner({
   children,
   isActive = false,
   isLive = false,
+  liveDelayMs = 0,
   reduceMotion = false
 }) {
   const known = status !== 'unknown' && status !== 'expired' && progress != null;
@@ -40,7 +41,8 @@ function CircularProgressRingInner({
             style={{
               background: ringColor,
               opacity: reduceMotion ? 0.4 : undefined,
-              filter: 'blur(8px)'
+              filter: 'blur(8px)',
+              animationDelay: reduceMotion ? undefined : `${liveDelayMs}ms`
             }}
           />
           <div
@@ -48,7 +50,8 @@ function CircularProgressRingInner({
             style={{
               background: ringColor,
               opacity: reduceMotion ? 0.28 : undefined,
-              filter: 'blur(4px)'
+              filter: 'blur(4px)',
+              animationDelay: reduceMotion ? undefined : `${liveDelayMs}ms`
             }}
           />
         </>
