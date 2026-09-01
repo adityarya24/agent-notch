@@ -157,10 +157,41 @@ Manage Agent Notch from any terminal via the `notch` command:
 | `notch disable-startup` | Remove Agent Notch from Windows Startup |
 | `notch smoke` | Run an end-to-end glow & handoff demo on the live HUD (0 quota burn) |
 | `notch smoke --clear` | Clean up leftover test artifacts from smoke runs |
+| `notch provider ...` | Register, list, remove, or discover custom providers |
 | `notch help` | Display available CLI commands |
 
 > [!NOTE]
 > **Hotkey**: Press <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>U</kbd> to toggle HUD visibility while running. (Note: Hotkey toggles visibility of the active instance; if the process is stopped via `notch stop`, launch it again using `notch`).
+
+### Provider registration from an agent
+
+An agent can opt itself into Notch without editing JSON. The command is
+non-interactive and writes the existing per-user config atomically:
+
+```bash
+notch provider add zcode --name "ZCode" --process ZCode.exe --quota none --icon auto
+```
+
+`register` is an alias for `add`. The exact native executable name is required
+for the activity glow; generic runtimes (`node`, `python`, PowerShell) and shell
+wrappers are rejected. Quota can be `none`, `manual`, or `command` (the latter
+uses a trusted local command that prints the JSON shape documented below).
+
+```bash
+notch provider list
+notch provider remove custom_zcode
+notch provider discover
+notch provider discover --json
+```
+
+`discover` and the Settings suggestions are detection-only: they never add a
+provider silently. Known desktop apps such as ZCode can be suggested from a
+cataloged Windows install path or native process even when they are not on PATH;
+click the suggestion in Settings or run `provider add` to opt in. Unknown tools
+must be registered once by the agent/user with the command above. `--icon auto`
+selects a deliberate bundled icon for known providers (ZCode uses the Cursor
+icon) and falls back to the generic Spark icon for unknown providers; Notch does
+not extract arbitrary executable icons.
 
 ---
 
