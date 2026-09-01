@@ -34,3 +34,45 @@ body {
 .notch-live-core {
   animation: notch-live-core 1.35s ease-in-out infinite;
 }
+
+.notch-toast {
+  width: 248px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px;
+  background: rgba(17, 17, 20, 0.96);
+  border: 1px solid #2a2a30;
+  border-left-width: 3px;
+  border-radius: 16px;
+  box-shadow:
+    0 18px 40px rgba(0, 0, 0, 0.55),
+    inset 1px 1px 0 rgba(255, 255, 255, 0.04);
+  text-align: left;
+  color: #fafafa;
+  cursor: pointer;
+}
+
+.notch-toast-mini {
+  width: 36px;
+  height: 36px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  flex: none;
+  background: #18181b;
+}
+
+.notch-toast b {
+  display: block;
+  font-size: 13px;
+  letter-spacing: -0.02em;
+  font-weight: 600;
+}
+
+.notch-toast small {
+  display: block;
+  margin-top: 2px;
+  color: #a1a1aa;
+  font-size: 11px;
+}

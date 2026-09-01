@@ -9,6 +9,13 @@ import { moveId, sortModelsByOrder } from './modelOrder';
 const VISIBLE_RINGS = 4;
 const RING_LIST_MAX_H = VISIBLE_RINGS * 54 + (VISIBLE_RINGS - 1) * 12;
 
+function jewelTone(model) {
+  if (!model || model.quotaState !== 'known' || model.ringPercent == null) return '#34d399';
+  if (model.status === 'critical' || Number(model.ringPercent) >= 80) return '#ef4444';
+  if (model.status === 'warning' || Number(model.ringPercent) >= 50) return '#f59e0b';
+  return '#10b981';
+}
+
 export default function App() {
   const [data, setData] = useState({
     activeModel: 'codex',
@@ -31,6 +38,8 @@ export default function App() {
   const saveRef = useRef(null);
   const [draftOrder, setDraftOrder] = useState(null);
   const [draggingId, setDraggingId] = useState(null);
+  const [quotaAlert, setQuotaAlert] = useState(null);
+  const hoverTimer = useRef(null);
 
   useEffect(() => {
     if (window.agentNotchAPI?.getConfig) {
@@ -54,9 +63,18 @@ export default function App() {
       unsubs.push(window.agentNotchAPI.onCollapsedChanged((collapsed) => {
         collapseInitialized.current = true;
         setIsCollapsed(Boolean(collapsed));
+        if (!collapsed) setQuotaAlert(null);
       }));
     }
-    return () => unsubs.forEach((unsub) => unsub?.());
+    if (window.agentNotchAPI?.onQuotaAlert) {
+      unsubs.push(window.agentNotchAPI.onQuotaAlert((events) => {
+        if (Array.isArray(events) && events[0]) setQuotaAlert(events[0]);
+      }));
+    }
+    return () => {
+      unsubs.forEach((unsub) => unsub?.());
+      clearTimeout(hoverTimer.current);
+    };
   }, []);
 
   useEffect(() => {
@@ -118,6 +136,7 @@ export default function App() {
     collapseInitialized.current = true;
     setHoveredModelId(null);
     setIsSettingsOpen(false);
+    if (!next) setQuotaAlert(null);
     setIsCollapsed(next);
     const result = await handleSaveConfig({ ...(data.config || {}), collapsed: next });
     if (result?.success === false) setIsCollapsed(previous);
@@ -207,13 +226,34 @@ export default function App() {
   }, [data.models]);
 
   const hoveredModel = models.find((m) => m.id === hoveredModelId);
+  const jewelModel = models.find((model) => activeRings.has(model.id))
+    || [...models]
+      .filter((model) => model.quotaState === 'known' && model.ringPercent != null)
+      .sort((a, b) => Number(b.ringPercent) - Number(a.ringPercent))[0]
+    || null;
+  const jewelColor = jewelTone(jewelModel);
+  const alertModel = quotaAlert ? models.find((model) => model.id === quotaAlert.id) : null;
+
+  const scheduleHover = (id) => {
+    if (isCollapsed || isSettingsOpen || draggingId) return;
+    clearTimeout(hoverTimer.current);
+    if (reduceMotion) {
+      setHoveredModelId(id);
+      return;
+    }
+    hoverTimer.current = setTimeout(() => setHoveredModelId(id), 120);
+  };
+  const scheduleLeave = () => {
+    clearTimeout(hoverTimer.current);
+    hoverTimer.current = setTimeout(() => setHoveredModelId(null), reduceMotion ? 0 : 80);
+  };
 
   const getModelIcon = (iconName) => {
     switch (iconName) {
       case 'claude':
         return <ClaudeIcon className="w-4 h-4" />;
       case 'codex':
-        return <OpenAIClassicIcon className="block w-[15px] h-[15px] -translate-x-[0.25px]" />;
+        return <OpenAIClassicIcon className="w-4 h-4" />;
       case 'cursor':
         return <CursorIcon className="w-4 h-4" />;
       case 'opencode':
@@ -242,6 +282,25 @@ export default function App() {
             allDetectedIds={data.allDetectedIds}
             onSaveConfig={handleSaveConfig}
           />
+        ) : quotaAlert && isCollapsed ? (
+          <button
+            data-hud
+            type="button"
+            className="notch-toast"
+            style={{ borderLeftColor: jewelTone(alertModel), boxShadow: `0 18px 40px rgba(0,0,0,.55), 0 0 18px ${jewelTone(alertModel)}33` }}
+            onClick={() => setCollapsed(false)}
+          >
+            <div
+              className="notch-toast-mini"
+              style={{ color: jewelTone(alertModel), boxShadow: `inset 0 0 0 2px ${jewelTone(alertModel)}b3` }}
+            >
+              {getModelIcon(alertModel?.icon || 'spark')}
+            </div>
+            <div>
+              <b>{quotaAlert.name} hit {quotaAlert.percent}%</b>
+              <small>{quotaAlert.window} · click to reveal</small>
+            </div>
+          </button>
         ) : (
           hoveredModel && (
             <ModelPopoverCard
@@ -254,14 +313,27 @@ export default function App() {
 
       {/* Side Notch Dock Body with Smooth Scrolling & Settings Gear */}
       <div
-        className={`group/rail relative bg-[#09090b]/98 backdrop-blur-2xl border-l-2 border-t-2 border-b-2 py-3 px-2 rounded-l-[26px] z-40 overflow-hidden flex flex-col items-center justify-between gap-2 transition-[transform,border-color,opacity,padding,box-shadow] ease-[cubic-bezier(0.22,1,0.36,1)] ${
+        className={`group/rail relative bg-[#09090b]/98 backdrop-blur-2xl border-l-2 border-t-2 border-b-2 py-3 px-2 rounded-l-[26px] z-40 overflow-hidden flex flex-col items-center justify-between gap-2 transition-[transform,border-color,opacity,box-shadow] ease-[cubic-bezier(0.16,1,0.3,1)] ${
           isCollapsed
-            ? 'translate-x-[40px] border-emerald-400/50 opacity-100 shadow-md shadow-black/40'
-            : 'translate-x-0 border-[#27272a] hover:border-[#34d399]/60 hover:pl-[22px] opacity-100 shadow-2xl shadow-black/95'
+            ? 'translate-x-[50px] opacity-100'
+            : 'translate-x-0 border-[#27272a] hover:border-[#34d399]/35 opacity-100 shadow-2xl shadow-black/95'
         }`}
-        style={{ transitionDuration: reduceMotion ? '0ms' : '280ms' }}
-        onMouseLeave={() => setHoveredModelId(null)}
+        style={{
+          transitionDuration: reduceMotion ? '0ms' : '420ms',
+          borderColor: isCollapsed ? jewelColor : undefined,
+          boxShadow: isCollapsed
+            ? `0 0 18px ${jewelColor}47, inset 1px 1px 0 rgba(255,255,255,.04)`
+            : undefined
+        }}
+        onMouseLeave={scheduleLeave}
       >
+        {isCollapsed ? (
+          <div
+            aria-hidden="true"
+            className="absolute left-0 top-3 bottom-3 w-[3px] rounded-r-full pointer-events-none"
+            style={{ background: jewelColor }}
+          />
+        ) : null}
         <button
           data-hud
           type="button"
@@ -271,7 +343,7 @@ export default function App() {
           aria-expanded={!isCollapsed}
           className={`absolute z-50 flex items-center justify-center top-1/2 -translate-y-1/2 focus:outline-none transition-[opacity,color] duration-200 ${
             isCollapsed
-              ? 'left-0 w-4 h-10 text-emerald-400 hover:text-emerald-300'
+              ? 'left-0 w-4 h-10 hover:opacity-90'
               : `left-1 w-[18px] h-8 text-neutral-400 hover:text-emerald-300 ${
                   hoveredModel || isSettingsOpen
                     ? 'opacity-0 pointer-events-none'
@@ -280,7 +352,7 @@ export default function App() {
           }`}
         >
           {isCollapsed ? (
-            <ChevronLeft className="w-3.5 h-3.5" strokeWidth={2.4} />
+            <ChevronLeft className="w-3.5 h-3.5" strokeWidth={2.4} style={{ color: jewelColor }} />
           ) : (
             <ChevronRight className="w-3.5 h-3.5" strokeWidth={2.4} />
           )}
@@ -309,16 +381,14 @@ export default function App() {
                 key={m.id}
                 data-hud
                 data-model-id={m.id}
-                className={`relative flex flex-col items-center gap-0.5 group cursor-grab ${
-                  draggingId === m.id ? 'opacity-50 cursor-grabbing' : ''
+                className={`relative flex flex-col items-center gap-0.5 group cursor-grab transition-transform duration-200 ${
+                  draggingId === m.id ? 'z-10 scale-105 cursor-grabbing drop-shadow-lg' : ''
                 } ${isFrom && !reduceMotion ? 'opacity-40' : 'opacity-100'}`}
                 onPointerDown={(event) => {
                   if (isCollapsed || isSettingsOpen || event.button !== 0) return;
                   dragRef.current = { id: m.id, startY: event.clientY, active: false };
                 }}
-                onMouseEnter={() => {
-                  if (!isCollapsed && !isSettingsOpen && !draggingId) setHoveredModelId(m.id);
-                }}
+                onMouseEnter={() => scheduleHover(m.id)}
               >
                 <CircularProgressRing
                   size={38}

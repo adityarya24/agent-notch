@@ -87,7 +87,7 @@ function CircularProgressRingInner({
       </svg>
 
       <div className={`absolute inset-[4px] z-[2] rounded-full bg-[#18181b] flex items-center justify-center transition-colors duration-200 ${isActive ? 'ring-1 ring-white/30' : 'group-hover:bg-[#27272a]'}`}>
-        <div className="w-4 h-4 flex items-center justify-center leading-none" style={{ color: ringColor }}>
+        <div className="w-4 h-4 flex items-center justify-center leading-none scale-90" style={{ color: ringColor }}>
           {children}
         </div>
       </div>

@@ -2,6 +2,15 @@
 
 All notable changes to Agent Notch are documented here.
 
+## [Unreleased]
+
+### Changed
+
+- Tucked rail is a quota-colored jewel remnant instead of a dead chevron.
+- Quota-cross alerts while the HUD is visible are an in-rail glass toast; Windows toasts remain only when the window is hidden.
+- Codex uses the official OpenAI logomark at the same size as the other rings.
+- Hover cards wait a beat before swapping, drag lifts the ring, and the rail no longer shifts padding on hover.
+
 ## [1.2.1] - 2026-09-01
 
 ### Fixed
