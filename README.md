@@ -40,10 +40,10 @@
 
 - **Account-Level Quota Rings**: Periodically refreshed session and plan-window usage percentages at a single glance.
 - **Strictly Grounded Quotas**: Never estimates or shows fake percentages. Unknown or unauthenticated accounts display as `—` or `login`.
-- **Honest Failure State**: A failed refresh can retain the last successful value for up to five minutes, clearly marked with `~` and a stale notice, before returning to unknown.
+- **Honest Failure State**: Recent successful readings survive restarts for up to 24 hours and stay clearly marked with `~` and a stale notice until live data returns. Expired authentication is never masked by cached quota.
 - **Zero-Lag Click-Through**: Transparent overlay pixels automatically forward all mouse clicks, drags, and scrolls to background windows.
 - **100% Standalone & Local-First**: Works immediately out of the box using your local CLI credentials. Zero telemetry, zero external tracking servers.
-- **Custom Extensible**: Easily monitor custom CLI agents or scripts via stdout JSON commands or manual snapshots.
+- **Custom Extensible**: Monitor custom CLI agents through stdout JSON commands or manual snapshots, and optionally map an exact native executable for automatic activity glow.
 
 ---
 
@@ -53,11 +53,11 @@ Agent Notch detects and tracks live usage for major coding agent ecosystems dire
 
 | Provider / Ring | Monitored Windows | Data Source & Detection |
 | :--- | :--- | :--- |
-| **OpenAI Codex** | 5h Session + Weekly | ChatGPT WHAM usage endpoint (`~/.codex/auth.json`) |
+| **OpenAI Codex** | Provider-reported session + plan windows | ChatGPT WHAM usage endpoint (`~/.codex/auth.json`); windows are labeled by duration |
 | **Claude Code** | 5h Session + Weekly | Official Anthropic OAuth usage API (`~/.claude/.credentials.json`) |
 | **Gemini / Antigravity** | Quota Summary / Limits | Official Antigravity CLI token vault & Cloud Code usage API |
 | **Cursor** | Monthly Period Usage | Cursor IDE local state (`state.vscdb` / session token) |
-| **Grok CLI** | Session + Billing Credits | Grok CLI local configuration & billing endpoint |
+| **Grok CLI** | Included quota when exposed | Grok CLI local configuration & billing endpoint; signed-in unavailable usage stays explicit |
 | **OpenCode Go** | Go Subscription Usage | OpenCode Go plan quota (excludes BYOK local engines) |
 | **Custom CLIs** | Dynamic / Custom | Automatic PATH detection; JSON stdout reader or manual snapshot |
 

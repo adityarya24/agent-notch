@@ -2,11 +2,26 @@
 
 All notable changes to Agent Notch are documented here.
 
-## [Unreleased]
+## [1.2.0] - 2026-09-01
 
 ### Added
 
 - Desktop toast when a quota crosses the critical threshold while the rail is tucked or hidden. Click the toast to reveal the HUD. Settings: **Notify when tucked**.
+- Direct activity glow for every active supported local CLI, including simultaneous agents and custom providers mapped to an exact native executable.
+
+### Changed
+
+- Last-known successful quota readings now survive restarts for up to 24 hours, remain visibly stale until refreshed, and are never replaced by unknown-only data.
+- Custom providers keep activity-process detection separate from optional JSON quota commands, with legacy config migration and reliable quoted Windows commands.
+
+### Fixed
+
+- Grok now distinguishes a valid signed-in session with unavailable quota from expired authentication and does not treat on-demand spend as included quota.
+- Codex quota windows are classified by their provider-reported duration, so personal 5-hour and weekly windows and Team weekly-only responses are labeled correctly regardless of response order.
+
+### Security
+
+- Persisted quota snapshots whitelist display-only fields; direct activity detection reads process and session metadata without reading prompts or transcripts.
 
 ## [1.1.0] - 2026-08-31
 
