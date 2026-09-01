@@ -1,6 +1,6 @@
 {
   "name": "agent-notch",
-  "version": "1.2.0",
+  "version": "1.2.1",
   "description": "Ambient right-edge desktop HUD for live AI coding-agent quotas. Windows-first, standalone, optional MindSync glow.",
   "main": "electron/main.js",
   "bin": {
