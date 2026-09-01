@@ -38,7 +38,8 @@ function runCli(root, args) {
     env: {
       ...process.env,
       NOTCH_CONFIG_DIR: root,
-      NOTCH_LEGACY_CONFIG_PATH: path.join(root, 'missing-legacy.json')
+      NOTCH_LEGACY_CONFIG_PATH: path.join(root, 'missing-legacy.json'),
+      ELECTRON_OVERRIDE_DIST_PATH: path.join(root, 'missing-electron')
     }
   });
 }

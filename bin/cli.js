@@ -38,7 +38,12 @@ function resolveElectron() {
   return win;
 }
 
-const electronPath = resolveElectron();
+let cachedElectronPath = null;
+
+function getElectronPath() {
+  if (!cachedElectronPath) cachedElectronPath = resolveElectron();
+  return cachedElectronPath;
+}
 
 function readLegacyPid() {
   try {
@@ -124,6 +129,7 @@ function sleep(ms) {
 }
 
 function spawnElectron() {
+  const electronPath = getElectronPath();
   if (!fs.existsSync(electronPath)) {
     throw new Error(`Electron binary missing at ${electronPath}. From the repo run: npm install`);
   }
@@ -211,6 +217,7 @@ function vbsQuote(value) {
 
 function enableAutostart() {
   try {
+    const electronPath = getElectronPath();
     const startupVbs = startupVbsPath();
     const vbs = [
       'Set WshShell = CreateObject("WScript.Shell")',
