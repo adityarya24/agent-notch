@@ -319,9 +319,9 @@ export default function App() {
 
       {/* Side Notch Dock Body with Smooth Scrolling & Settings Gear */}
       <div
-        className={`group/rail relative bg-[#09090b]/98 backdrop-blur-2xl border-l-2 border-t-2 border-b-2 py-3 pl-1 pr-2 rounded-l-[26px] z-40 overflow-hidden flex flex-row items-center gap-0.5 transition-[transform,border-color,opacity,box-shadow] ease-[cubic-bezier(0.16,1,0.3,1)] ${
+        className={`group/rail relative bg-[#09090b]/98 backdrop-blur-2xl border-l-2 border-t-2 border-b-2 py-3 pl-1 pr-2 rounded-l-[26px] z-40 overflow-hidden flex flex-row items-center gap-2 transition-[transform,border-color,opacity,box-shadow] ease-[cubic-bezier(0.16,1,0.3,1)] ${
           isCollapsed
-            ? 'translate-x-[50px] opacity-100'
+            ? 'translate-x-[56px] opacity-100'
             : 'translate-x-0 border-[#27272a] hover:border-[#34d399]/35 opacity-100 shadow-2xl shadow-black/95'
         }`}
         style={{
