@@ -7,7 +7,7 @@ All notable changes to Agent Notch are documented here.
 ### Added
 
 - Provider self-registration through `notch provider add` / `register`, plus `list`, `remove`, and detection-only `discover` commands backed by validated atomic config writes.
-- Shared known-app discovery for Settings and the CLI, including ZCode detection outside `PATH` and catalog-based `--icon auto` selection with a generic Spark fallback.
+- Shared discovery for Aider, GitHub Copilot, Amp, Goose, Crush, Qwen, and ZCode across Settings and the CLI; PATH-based tools use executable lookup, ZCode can also be found from its Windows install path, and `--icon auto` uses catalog mappings with a generic Spark fallback.
 
 ### Changed
 
