@@ -13,6 +13,7 @@ function quotaFingerprint(data) {
       model.id,
       model.ringPercent,
       model.quotaState,
+      model.authState,
       model.status,
       model.sessionUsedPercent,
       model.weeklyUsedPercent,
@@ -31,6 +32,7 @@ function keepLastKnown(previous, next, now = Date.now(), staleTtlMs = DEFAULT_ST
     models: next.models.map((model) => {
       const old = previousById[model.id];
       if (!old || model.quotaState === 'known') return { ...model, stale: false };
+      if (model.quotaState === 'expired' || model.authState === 'expired') return { ...model, stale: false };
       if (old.quotaState !== 'known' && !old.stale) return model;
       const observedAt = Date.parse(String(old.observedAt || ''));
       const ageMs = Number.isFinite(observedAt) ? Math.max(0, now - observedAt) : Number.POSITIVE_INFINITY;

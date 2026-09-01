@@ -11,7 +11,7 @@ function barColor(percent, state, stale, alertThreshold) {
   return '#10b981';
 }
 
-function QuotaRow({ label, percent, resetText, state, stale, alertThreshold }) {
+function QuotaRow({ label, percent, resetText, state, authState, stale, alertThreshold }) {
   const known = state === 'known' && percent != null;
   const color = barColor(percent, state, stale, alertThreshold);
   const width = known ? Math.min(100, percent) : 0;
@@ -34,7 +34,9 @@ function QuotaRow({ label, percent, resetText, state, stale, alertThreshold }) {
       </div>
       <div className="flex justify-between items-center mt-1 text-[11px] font-mono">
         <span style={{ color }} className="font-semibold">
-          {known ? `${stale ? '~' : ''}${percent}% Used` : state === 'expired' ? 'Sign in required' : 'Quota unknown'}
+          {known ? `${stale ? '~' : ''}${percent}% Used` :
+            state === 'expired' ? 'Sign in required' :
+              authState === 'signed_in' ? 'Signed in · usage unavailable' : 'Quota unknown'}
         </span>
         {known && (
           <span className="text-neutral-500">
@@ -77,6 +79,7 @@ export function ModelPopoverCard({ model, jobActivity }) {
         percent={model.sessionUsedPercent}
         resetText={model.sessionResetText}
         state={state}
+        authState={model.authState}
         stale={model.stale}
         alertThreshold={model.alertThreshold}
       />
@@ -85,6 +88,7 @@ export function ModelPopoverCard({ model, jobActivity }) {
         percent={model.weeklyUsedPercent}
         resetText={model.weeklyResetText}
         state={state}
+        authState={model.authState}
         stale={model.stale}
         alertThreshold={model.alertThreshold}
       />
