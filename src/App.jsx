@@ -11,7 +11,11 @@ const RING_LIST_MAX_H = VISIBLE_RINGS * 54 + (VISIBLE_RINGS - 1) * 12;
 
 function jewelTone(model) {
   if (!model || model.quotaState !== 'known' || model.ringPercent == null) return '#34d399';
-  if (model.status === 'critical' || Number(model.ringPercent) >= 80) return '#ef4444';
+  const rawThreshold = Number(model.alertThreshold);
+  const criticalThreshold = Number.isFinite(rawThreshold)
+    ? Math.max(50, Math.min(100, rawThreshold))
+    : 80;
+  if (model.status === 'critical' || Number(model.ringPercent) >= criticalThreshold) return '#ef4444';
   if (model.status === 'warning' || Number(model.ringPercent) >= 50) return '#f59e0b';
   return '#10b981';
 }

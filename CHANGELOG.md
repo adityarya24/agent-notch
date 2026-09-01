@@ -2,7 +2,12 @@
 
 All notable changes to Agent Notch are documented here.
 
-## [Unreleased]
+## [1.3.0] - 2026-09-01
+
+### Added
+
+- Provider self-registration through `notch provider add` / `register`, plus `list`, `remove`, and detection-only `discover` commands backed by validated atomic config writes.
+- Shared known-app discovery for Settings and the CLI, including ZCode detection outside `PATH` and catalog-based `--icon auto` selection with a generic Spark fallback.
 
 ### Changed
 
@@ -10,6 +15,10 @@ All notable changes to Agent Notch are documented here.
 - Quota-cross alerts while the HUD is visible are an in-rail glass toast; Windows toasts remain only when the window is hidden.
 - Codex uses the official OpenAI logomark at the same size as the other rings.
 - Hover cards wait a beat before swapping, drag lifts the ring, and the rail no longer shifts padding on hover.
+
+### Fixed
+
+- The tucked jewel now follows each ring's configured critical threshold instead of assuming the default 80% threshold.
 
 ## [1.2.1] - 2026-09-01
 
