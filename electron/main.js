@@ -5,6 +5,8 @@ const fs = require('fs');
 const { getAllInstalledAgentUsage, getLocalConfig, saveLocalConfig, probeCli, suggestCustomClis } = require('./scrapers');
 const { readJobActivity } = require('./handoff_status');
 const { evaluateQuotaAlerts, formatAlertBody } = require('./alert-notify');
+const { mergeActiveRings, readDirectAgentActivity } = require('./direct_activity');
+const { customProcessMappings, ProcessActivityTracker } = require('./process_activity');
 const { runtimePath, ensureRuntimeDir, writePid, clearPid } = require('./runtime-state');
 const { activityFingerprint, quotaFingerprint, keepLastKnown } = require('./quota-state');
 const { PERSISTED_QUOTA_TTL_MS, readQuotaCache, writeQuotaCache } = require('./quota-cache');
@@ -21,6 +23,21 @@ let alertFiredIds = [];
 const logFile = runtimePath('electron_boot.log');
 const quotaCacheFile = runtimePath('quota-cache.json');
 const APP_USER_MODEL_ID = 'com.adityarya.agent-notch';
+const processActivity = new ProcessActivityTracker();
+
+function readLocalActivities() {
+  // Cursor Agent and OpenCode can run behind node.exe shims, so their narrow
+  // artifact adapters stay enabled even when no dedicated process name exists.
+  const includeRings = [...new Set([...processActivity.liveRings(), 'cursor', 'gemini', 'opencode'])];
+  return [...readDirectAgentActivity({ includeRings }), ...processActivity.current()];
+}
+
+function configuredProcessMappings() {
+  // Activity settings must reflect the just-saved file even when a slower
+  // quota refresh is still resolving with its older config snapshot.
+  const config = getLocalConfig();
+  return customProcessMappings(config?.customAgents);
+}
 
 const OVERLAY = {
   dock: { width: 360, height: 620 },
@@ -160,18 +177,20 @@ function createOverlayWindow() {
 
 function attachActivity(data) {
   const activity = readJobActivity();
+  const directActivities = readLocalActivities();
   data.jobActivity = activity;
+  data.activeRings = mergeActiveRings(activity, directActivities);
   data.handoff = activity && activity.handoff ? activity.handoff : null;
   data.reduceMotion = reduceMotionEnabled(data.config || getLocalConfig());
   return data;
 }
 
-function scheduleJobPoll(activity) {
+function scheduleJobPoll(activeRings = [], delayOverride = null) {
   if (jobPollTimer) clearTimeout(jobPollTimer);
-  const ms = activity && activity.jobStatus === 'running' ? 2500 : 15000;
+  const delay = delayOverride ?? (activeRings.length ? 3000 : 7500);
   jobPollTimer = setTimeout(() => {
     refreshJobActivity();
-  }, ms);
+  }, delay);
 }
 
 function publishState(next) {
@@ -232,17 +251,18 @@ async function refreshUsageData({ force = false } = {}) {
       const liveData = attachActivity(await getAllInstalledAgentUsage({ force }));
       const merged = keepLastKnown(cachedQuotaState, liveData, Date.now(), PERSISTED_QUOTA_TTL_MS);
       merged.jobActivity = liveData.jobActivity;
+      merged.activeRings = liveData.activeRings;
       merged.handoff = liveData.handoff;
       merged.reduceMotion = liveData.reduceMotion;
       writeQuotaCache(quotaCacheFile, merged);
       if (cachedQuotaState && quotaFingerprint(cachedQuotaState) === quotaFingerprint(merged)) {
         cachedQuotaState = { ...merged, lastUpdated: liveData.lastUpdated };
-        scheduleJobPoll(merged.jobActivity);
+        scheduleJobPoll(merged.activeRings);
         return cachedQuotaState;
       }
       maybeNotifyQuotaAlerts(cachedQuotaState, merged);
       publishState(merged);
-      scheduleJobPoll(merged.jobActivity);
+      scheduleJobPoll(merged.activeRings);
       return merged;
     } catch (err) {
       console.error('[Agent Notch] Error refreshing quota:', err);
@@ -254,30 +274,33 @@ async function refreshUsageData({ force = false } = {}) {
   return usageRefreshPromise;
 }
 
-function refreshJobActivity() {
+async function refreshJobActivity() {
   try {
     if (!cachedQuotaState) {
       refreshUsageData();
       return;
     }
+    await processActivity.sample(configuredProcessMappings());
     const activity = readJobActivity();
+    const activeRings = mergeActiveRings(activity, readLocalActivities());
     const reduceMotion = reduceMotionEnabled(cachedQuotaState.config || getLocalConfig());
-    const prev = activityFingerprint(cachedQuotaState.jobActivity);
-    const next = activityFingerprint(activity);
+    const prev = activityFingerprint(cachedQuotaState.jobActivity, cachedQuotaState.activeRings);
+    const next = activityFingerprint(activity, activeRings);
     if (prev === next && Boolean(cachedQuotaState.reduceMotion) === reduceMotion) {
-      scheduleJobPoll(activity);
+      scheduleJobPoll(activeRings);
       return;
     }
     publishState({
       ...cachedQuotaState,
       jobActivity: activity,
+      activeRings,
       handoff: activity && activity.handoff ? activity.handoff : null,
       reduceMotion
     });
-    scheduleJobPoll(activity);
+    scheduleJobPoll(activeRings);
   } catch (err) {
     console.error('[Agent Notch] Error refreshing job activity:', err);
-    scheduleJobPoll(null);
+    scheduleJobPoll(cachedQuotaState?.activeRings || []);
   }
 }
 
@@ -475,7 +498,7 @@ if (gotTheLock) app.whenReady().then(() => {
   });
 
   pollInterval = setInterval(() => refreshUsageData(), 60000);
-  scheduleJobPoll(null);
+  processActivity.sample(configuredProcessMappings()).finally(() => scheduleJobPoll([], 3000));
 });
 
 process.on('uncaughtException', (err) => {

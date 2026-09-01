@@ -124,6 +124,10 @@ export default function App() {
   };
 
   const job = data.jobActivity && data.jobActivity.jobStatus === 'running' ? data.jobActivity : null;
+  const activeRings = useMemo(() => new Set([
+    ...(data.activeRings || []),
+    ...(job?.activeRing ? [job.activeRing] : [])
+  ]), [data.activeRings, job?.activeRing]);
   const reduceMotion = Boolean(data.reduceMotion) || Boolean(data.config?.reduceMotion);
   configRef.current = data.config;
   saveRef.current = handleSaveConfig;
@@ -296,8 +300,8 @@ export default function App() {
           title={models.length > VISIBLE_RINGS ? 'Scroll for more · drag to reorder' : 'Drag to reorder'}
         >
           {models.length > 0 ? (
-            models.map((m) => {
-              const isWork = Boolean(job && job.activeRing === m.id);
+            models.map((m, index) => {
+              const isWork = activeRings.has(m.id);
               const isFrom = Boolean(flash && flash.fromRing === m.id);
               const isTo = Boolean(flash && flash.toRing === m.id);
               return (
@@ -323,6 +327,7 @@ export default function App() {
                   status={m.status || m.quotaState}
                   isActive={hoveredModelId === m.id}
                   isLive={isWork || isTo}
+                  liveDelayMs={index * -170}
                   reduceMotion={reduceMotion}
                 >
                   {getModelIcon(m.icon)}

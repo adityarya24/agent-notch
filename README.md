@@ -89,6 +89,7 @@ Agent Notch detects and tracks live usage for major coding agent ecosystems dire
 - **Settings Drawer**: Toggle which CLIs appear, set the alert threshold, add custom CLIs, turn tuck notifications on/off, and turn handoff animation off.
 - **Edge Collapse**: Hover the rail for a right-facing chevron to tuck it; a left-facing chevron on the same-height remnant pulls it back. Notch remembers the last chosen state.
 - **Tuck Notifications**: If a quota crosses the critical threshold while the rail is tucked or hidden, Windows shows a desktop toast. Click it to reveal the HUD. Expanded rings already show red, so those stay silent.
+- **Live Agent Glow**: Supported local CLI rings breathe in their own quota color when recent session writes or dedicated-process activity indicates work. Concurrent agents glow together with staggered timing; session contents never leave the machine and are not read for display.
 
 ---
 
@@ -99,7 +100,7 @@ Agent Notch detects and tracks live usage for major coding agent ecosystems dire
 
 If you also use [**MindSync**](https://github.com/adityarya24/mindsync-ai) for multi-agent task dispatch and automated failover across local and VPS agents, Notch automatically surfaces live orchestration status:
 
-- **Active Agent Glow**: The working ring breathes in its own quota color. No extra badge.
+- **Dispatch-Aware Glow**: A running MindSync job keeps its assigned agent ring active alongside any directly observed local CLI sessions.
 - **One-Shot Handoff Flash**: When MindSync transitions a task between agents (e.g. `codex → grok (quota exhausted)`), a non-intrusive 2–3s banner plays once and quietly settles.
 - **Pure Spectator**: Notch never touches job execution, task transfers, or dispatch — it purely reflects live state from `~/.mindsync/dispatch/jobs/`.
 
@@ -198,7 +199,7 @@ You can add any custom coding assistant or local LLM CLI to the dock via the Set
 
 1. Click the **Settings Gear** at the bottom of the dock.
 2. Under **Custom Agents**, click **Add Custom CLI**.
-3. Supply a **Display Name** and an optional executable name on your `PATH`.
+3. Supply a **Display Name** and, for automatic live glow, the CLI's native process/executable name (for example `aider`).
 4. Choose a Quota Source:
    - **Command Stdout**: Point to a command/script that outputs JSON:
      ```json
@@ -208,9 +209,10 @@ You can add any custom coding assistant or local LLM CLI to the dock via the Set
      }
      ```
    - **Manual Snapshot**: Set fixed percentage values for manual tracking.
-   - **Unmanaged**: Displays as an unmetered ring with active process detection.
+   - **Unmanaged**: Displays as an unmetered ring; it can still glow while its configured native CLI process is doing CPU work.
 
 Custom quota commands run locally on each refresh. Only configure commands you trust.
+Activity Process and JSON Quota Command are separate: the first is used only for local process activity, while the second supplies percentages. Notch intentionally does not infer activity from generic wrapper runtimes such as `node`, `python`, PowerShell, or `.cmd`/`.ps1` scripts because that could light the wrong provider ring.
 
 ---
 
@@ -219,7 +221,7 @@ Custom quota commands run locally on each refresh. Only configure commands you t
 - **Zero Interruption**: Frameless, transparent Electron overlay configured with OS-level click forwarding so your IDE, terminal, and browser interactions remain completely uninterrupted.
 - **Local-First Security**: Notch has no telemetry or tracking backend. Provider credentials are read locally and sent only to that provider's official usage, billing, or OAuth endpoint when needed to retrieve quota data.
 - **Credential Spectator Boundary**: Notch does not rewrite or refresh provider credential files. An expired Claude session asks you to sign in through Claude Code. Google token refresh, when explicitly configured, is held in memory.
-- **Job Spectator Boundary**: Notch never transfers jobs or controls MindSync execution; it only reads MindSync job metadata for the active glow and handoff flash.
+- **Activity Spectator Boundary**: Notch detects recent local CLI work from session-artifact timestamps plus dedicated-process name and CPU metadata. It never reads transcript contents for the glow, and none of this activity metadata is transmitted. MindSync metadata remains the source for dispatch glow and handoff flash.
 
 ---
 

@@ -1,7 +1,7 @@
 const assert = require('node:assert/strict');
 const test = require('node:test');
 
-const { keepLastKnown, quotaFingerprint } = require('../electron/quota-state');
+const { activityFingerprint, keepLastKnown, quotaFingerprint } = require('../electron/quota-state');
 
 const start = Date.parse('2026-08-31T10:00:00.000Z');
 const known = {
@@ -53,4 +53,9 @@ test('expired auth bypasses stale last-known quota', () => {
   assert.equal(merged.models[0].authState, 'expired');
   assert.equal(merged.models[0].ringPercent, undefined);
   assert.equal(merged.models[0].stale, false);
+});
+
+test('activity fingerprints are stable for reordered rings and change with live agents', () => {
+  assert.equal(activityFingerprint(null, ['grok', 'codex']), activityFingerprint(null, ['codex', 'grok', 'codex']));
+  assert.notEqual(activityFingerprint(null, ['codex']), activityFingerprint(null, ['codex', 'grok']));
 });

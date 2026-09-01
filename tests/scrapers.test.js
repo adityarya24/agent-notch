@@ -4,7 +4,7 @@ const os = require('node:os');
 const path = require('node:path');
 const test = require('node:test');
 
-const { _test, getAllInstalledAgentUsage, saveLocalConfig } = require('../electron/scrapers');
+const { _test, getAllInstalledAgentUsage, probeCli, saveLocalConfig } = require('../electron/scrapers');
 
 test.beforeEach(() => _test.resetReaderCache());
 
@@ -218,4 +218,100 @@ test('disabled providers are filtered before any reader runs', async () => {
     delete process.env.NOTCH_LEGACY_CONFIG_PATH;
     fs.rmSync(root, { recursive: true, force: true });
   }
+});
+
+test('custom providers persist and render manual, command, and failure states', async () => {
+  const root = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-notch-custom-'));
+  const goodScript = path.join(root, 'quota-ok.js');
+  const badScript = path.join(root, 'quota-fail.js');
+  fs.writeFileSync(goodScript, "process.stdout.write(JSON.stringify({name:'Fixture Agent',sessionUsedPercent:74,weeklyUsedPercent:33,sessionResetText:'Session fixture',weeklyResetText:'Weekly fixture'}));\n", 'utf8');
+  fs.writeFileSync(badScript, 'process.exit(7);\n', 'utf8');
+  process.env.NOTCH_CONFIG_DIR = root;
+  process.env.NOTCH_LEGACY_CONFIG_PATH = path.join(root, 'missing-legacy.json');
+  try {
+    const quote = (value) => `"${String(value).replace(/"/g, '\\"')}"`;
+    const saved = saveLocalConfig({
+      enabledModels: {
+        codex: false,
+        claude: false,
+        gemini: false,
+        cursor: false,
+        opencode: false,
+        grok: false,
+        custom_manual: true,
+        custom_command: true,
+        custom_failure: true,
+        custom_disabled: false
+      },
+      alertThreshold: 80,
+      modelOrder: ['custom_command', 'custom_manual', 'custom_failure', 'custom_disabled'],
+      customAgents: [
+        {
+          id: 'custom_manual',
+          name: 'Manual Agent',
+          provider: 'Local',
+          quotaSource: 'manual',
+          activityProcess: 'fixture-agent',
+          sessionUsedPercent: 28,
+          weeklyUsedPercent: 61,
+          icon: 'spark'
+        },
+        {
+          id: 'custom_command',
+          name: 'Command Agent',
+          provider: 'Fixture',
+          quotaSource: 'command',
+          command: `${quote(process.execPath)} ${quote(goodScript)}`,
+          icon: 'codex'
+        },
+        {
+          id: 'custom_failure',
+          name: 'Broken Agent',
+          quotaSource: 'command',
+          command: `${quote(process.execPath)} ${quote(badScript)}`
+        },
+        {
+          id: 'custom_disabled',
+          name: 'Disabled Agent',
+          quotaSource: 'manual',
+          sessionUsedPercent: 99
+        }
+      ]
+    });
+    assert.equal(saved.customAgents.length, 4);
+    assert.equal(saved.customAgents.find((agent) => agent.id === 'custom_manual').activityProcess, 'fixture-agent');
+
+    const result = await getAllInstalledAgentUsage({ force: true, now: 10_000 });
+    assert.deepEqual(result.models.map((model) => model.id), ['custom_command', 'custom_manual', 'custom_failure']);
+    assert.equal(result.allDetectedIds.length, 10);
+
+    const command = result.models.find((model) => model.id === 'custom_command');
+    assert.equal(command.name, 'Fixture Agent');
+    assert.equal(command.ringPercent, 74);
+    assert.equal(command.quotaState, 'known');
+    assert.equal(command.sessionResetText, 'Session fixture');
+    assert.equal(command.weeklyResetText, 'Weekly fixture');
+
+    const manual = result.models.find((model) => model.id === 'custom_manual');
+    assert.equal(manual.ringPercent, 61);
+    assert.equal(manual.quotaState, 'known');
+
+    const failure = result.models.find((model) => model.id === 'custom_failure');
+    assert.equal(failure.quotaState, 'unknown');
+    assert.equal(failure.ringPercent, null);
+    assert.equal(failure.sessionResetText, 'Custom command failed');
+    assert.ok(fs.existsSync(path.join(root, 'config.json')));
+  } finally {
+    delete process.env.NOTCH_CONFIG_DIR;
+    delete process.env.NOTCH_LEGACY_CONFIG_PATH;
+    fs.rmSync(root, { recursive: true, force: true });
+  }
+});
+
+test('CLI probe accepts an executable name but rejects shell expressions', async () => {
+  const executable = process.platform === 'win32' ? 'node.exe' : 'node';
+  const found = await probeCli(executable);
+  assert.equal(found.found, true);
+  assert.ok(found.path);
+  assert.deepEqual(await probeCli('node --version'), { found: false, path: null });
 });

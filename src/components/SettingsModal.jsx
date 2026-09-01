@@ -27,6 +27,7 @@ function emptyDraft() {
     quotaSource: 'unknown',
     sessionUsedPercent: '',
     weeklyUsedPercent: '',
+    activityProcess: '',
     command: ''
   };
 }
@@ -62,8 +63,8 @@ export function SettingsModal({ isOpen, onClose, config, allDetectedIds, onSaveC
       setProbe(null);
       return;
     }
-    const cmd = draft.command.trim();
-    if (!cmd || /\s/.test(cmd) || draft.quotaSource === 'command') {
+    const cmd = draft.activityProcess.trim();
+    if (!cmd || /\s/.test(cmd)) {
       setProbe(null);
       return;
     }
@@ -72,7 +73,7 @@ export function SettingsModal({ isOpen, onClose, config, allDetectedIds, onSaveC
       window.agentNotchAPI.probeCli(cmd).then(setProbe).catch(() => setProbe(null));
     }, 280);
     return () => clearTimeout(timer);
-  }, [draft.command, draft.quotaSource, showAdd]);
+  }, [draft.activityProcess, showAdd]);
 
   if (!isOpen) return null;
 
@@ -118,7 +119,7 @@ export function SettingsModal({ isOpen, onClose, config, allDetectedIds, onSaveC
 
   const addCustom = () => {
     const name = draft.name.trim();
-    if (!name) return;
+    if (!name || (draft.quotaSource === 'command' && !draft.command.trim())) return;
     addAgent({
       id: `custom_${Date.now().toString(36)}`,
       name,
@@ -128,7 +129,8 @@ export function SettingsModal({ isOpen, onClose, config, allDetectedIds, onSaveC
       quotaSource: draft.quotaSource || 'unknown',
       sessionUsedPercent: draft.sessionUsedPercent === '' ? null : Number(draft.sessionUsedPercent),
       weeklyUsedPercent: draft.weeklyUsedPercent === '' ? null : Number(draft.weeklyUsedPercent),
-      command: draft.command.trim()
+      activityProcess: draft.activityProcess.trim(),
+      command: draft.quotaSource === 'command' ? draft.command.trim() : ''
     });
     setDraft(emptyDraft());
     setShowAdd(false);
@@ -145,7 +147,8 @@ export function SettingsModal({ isOpen, onClose, config, allDetectedIds, onSaveC
       quotaSource: 'unknown',
       sessionUsedPercent: null,
       weeklyUsedPercent: null,
-      command: item.command
+      activityProcess: item.command,
+      command: ''
     });
   };
 
@@ -257,12 +260,12 @@ export function SettingsModal({ isOpen, onClose, config, allDetectedIds, onSaveC
               className="w-full bg-[#18181b] border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white placeholder:text-neutral-500 outline-none focus:border-emerald-500/50"
             />
             <input
-              value={draft.command}
-              onChange={(e) => setDraft({ ...draft, command: e.target.value })}
-              placeholder={draft.quotaSource === 'command' ? 'Command that prints JSON percents' : 'CLI on PATH (optional, e.g. aider)'}
+              value={draft.activityProcess}
+              onChange={(e) => setDraft({ ...draft, activityProcess: e.target.value })}
+              placeholder="CLI process for glow (optional, e.g. aider)"
               className="w-full bg-[#18181b] border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white placeholder:text-neutral-500 outline-none focus:border-emerald-500/50"
             />
-            {probe && draft.quotaSource !== 'command' && draft.command.trim() && (
+            {probe && draft.activityProcess.trim() && (
               <p className={`text-[10px] ${probe.found ? 'text-emerald-400' : 'text-amber-400'}`}>
                 {probe.found ? `Found: ${probe.path}` : 'Not on PATH — you can still add it, quota stays unknown'}
               </p>
@@ -295,6 +298,12 @@ export function SettingsModal({ isOpen, onClose, config, allDetectedIds, onSaveC
             </select>
             {draft.quotaSource === 'command' && (
               <div className="text-[10px] text-neutral-500 leading-snug">
+                <input
+                  value={draft.command}
+                  onChange={(e) => setDraft({ ...draft, command: e.target.value })}
+                  placeholder="Command that prints JSON percents"
+                  className="mb-1.5 w-full bg-[#18181b] border border-white/10 rounded-lg px-2 py-1.5 text-xs text-white placeholder:text-neutral-500 outline-none focus:border-emerald-500/50"
+                />
                 <p className="font-mono">{'{"sessionUsedPercent":12,"weeklyUsedPercent":40}'}</p>
                 <p className="mt-1 text-amber-400/80">Runs this local command when Notch refreshes. Only add commands you trust.</p>
               </div>
@@ -330,7 +339,7 @@ export function SettingsModal({ isOpen, onClose, config, allDetectedIds, onSaveC
               </button>
               <button
                 onClick={addCustom}
-                disabled={!draft.name.trim()}
+                disabled={!draft.name.trim() || (draft.quotaSource === 'command' && !draft.command.trim())}
                 className="flex-1 py-1.5 rounded-lg text-[11px] font-semibold bg-emerald-500 text-[#052e1c] disabled:opacity-40"
               >
                 Add
