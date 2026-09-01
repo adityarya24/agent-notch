@@ -382,6 +382,53 @@ function readCodexModelName() {
   return 'Codex';
 }
 
+const HOUR_SECONDS = 60 * 60;
+const DAY_SECONDS = 24 * HOUR_SECONDS;
+
+function codexWindowKind(window, fallbackKind) {
+  const seconds = Number(window && window.limit_window_seconds);
+  if (!Number.isFinite(seconds) || seconds <= 0) return fallbackKind;
+  return seconds <= DAY_SECONDS ? 'session' : 'weekly';
+}
+
+function codexWindowLabel(window, kind) {
+  const seconds = Number(window && window.limit_window_seconds);
+  if (!Number.isFinite(seconds) || seconds <= 0) return kind === 'weekly' ? 'Weekly' : '5h session';
+  if (kind === 'weekly') {
+    if (seconds >= 6 * DAY_SECONDS && seconds <= 8 * DAY_SECONDS) return 'Weekly';
+    if (seconds % DAY_SECONDS === 0) return `${seconds / DAY_SECONDS}d window`;
+    if (seconds % HOUR_SECONDS === 0) return `${seconds / HOUR_SECONDS}h window`;
+    return 'Plan window';
+  }
+  if (seconds % HOUR_SECONDS === 0) {
+    return `${seconds / HOUR_SECONDS}h session`;
+  }
+  if (seconds % 60 === 0) return `${seconds / 60}m session`;
+  return 'Session window';
+}
+
+function parseCodexWindows(rateLimit) {
+  const parsed = { session: null, weekly: null };
+  const windows = [
+    { value: rateLimit && rateLimit.primary_window, fallbackKind: 'session' },
+    { value: rateLimit && rateLimit.secondary_window, fallbackKind: 'weekly' }
+  ];
+  for (const entry of windows) {
+    const window = entry.value;
+    if (!window || typeof window !== 'object') continue;
+    const percent = coercePercent(window.used_percent ?? window.usage_percent);
+    if (percent == null) continue;
+    const kind = codexWindowKind(window, entry.fallbackKind);
+    const candidate = {
+      percent,
+      resetAt: window.reset_at,
+      label: codexWindowLabel(window, kind)
+    };
+    if (!parsed[kind] || candidate.percent > parsed[kind].percent) parsed[kind] = candidate;
+  }
+  return parsed;
+}
+
 async function getCodexUsage() {
   const dir = codexHome();
   const authPath = path.join(dir, 'auth.json');
@@ -444,10 +491,9 @@ async function getCodexUsage() {
     }
 
     const rateLimit = res.json.rate_limit || {};
-    const primary = rateLimit.primary_window || {};
-    const secondary = rateLimit.secondary_window || {};
-    const sessionUsed = coercePercent(primary.used_percent ?? primary.usage_percent);
-    const weeklyUsed = coercePercent(secondary.used_percent ?? secondary.usage_percent);
+    const { session, weekly } = parseCodexWindows(rateLimit);
+    const sessionUsed = session && session.percent;
+    const weeklyUsed = weekly && weekly.percent;
     const plan = res.json.plan_type ? String(res.json.plan_type).toUpperCase() : 'OpenAI';
 
     if (sessionUsed == null && weeklyUsed == null) {
@@ -471,10 +517,10 @@ async function getCodexUsage() {
       quotaState: 'known',
       sessionUsedPercent: sessionUsed,
       weeklyUsedPercent: weeklyUsed,
-      sessionLabel: '5h session',
-      weeklyLabel: 'Weekly',
-      sessionResetText: formatResetAt(primary.reset_at) || (sessionUsed == null ? 'No session window' : 'Active'),
-      weeklyResetText: formatResetAt(secondary.reset_at) || (weeklyUsed == null ? 'No weekly window' : 'Active')
+      sessionLabel: (session && session.label) || '5h session',
+      weeklyLabel: (weekly && weekly.label) || 'Weekly',
+      sessionResetText: formatResetAt(session && session.resetAt) || (sessionUsed == null ? 'No session window' : 'Active'),
+      weeklyResetText: formatResetAt(weekly && weekly.resetAt) || (weeklyUsed == null ? 'No weekly window' : 'Active')
     });
   } catch (err) {
     return detectedCard({
@@ -1405,6 +1451,7 @@ module.exports = {
     coercePercent,
     detectedCard,
     grokBillingCardFromResponse,
+    parseCodexWindows,
     quotaStatus,
     parseGrokBillingConfig,
     readWithCache,
