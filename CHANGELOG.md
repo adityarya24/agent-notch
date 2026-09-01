@@ -2,6 +2,15 @@
 
 All notable changes to Agent Notch are documented here.
 
+## [1.3.7] - 2026-09-02
+
+### Fixed
+
+- The hover card is no longer clipped against the window edge. The 280px card, its
+  8px margin and the rail did not fit in a 360px window; widening the chevron gutter
+  in 1.3.6 pushed the shortfall from 6px to 12px and made it obvious. The dock is now
+  380px, leaving the card 288px to sit in.
+
 ## [1.3.6] - 2026-09-02
 
 ### Fixed
