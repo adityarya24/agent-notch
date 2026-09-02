@@ -24,7 +24,7 @@ function QuotaRow({ label, percent, resetText, state, authState, stale, alertThr
       </div>
       <div className="h-1.5 w-full bg-[#27272a] rounded-full overflow-hidden">
         <div
-          className="h-full rounded-full transition-all duration-500"
+          className="h-full rounded-full transition-all duration-[var(--notch-slow)]"
           style={{
             width: `${width}%`,
             backgroundColor: color,
@@ -62,7 +62,7 @@ export function ModelPopoverCard({ model, jobActivity }) {
     : '';
 
   return (
-    <div className="w-[280px] bg-[#111114]/95 backdrop-blur-xl border border-[#27272a] rounded-2xl p-4 text-white shadow-2xl shadow-black/80 relative animate-in fade-in zoom-in-95 duration-200">
+    <div className="w-[280px] bg-[#111114]/95 backdrop-blur-xl border border-[#27272a] rounded-2xl p-4 text-white shadow-2xl shadow-black/80 relative notch-enter">
       <div className="absolute right-[-7px] top-[24px] w-3.5 h-3.5 bg-[#111114] border-t border-r border-[#27272a] transform rotate-45" />
 
       <div className="flex items-center justify-between gap-2 mb-3">

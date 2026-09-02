@@ -2,6 +2,42 @@
 
 :root {
   color-scheme: dark;
+
+  /* One motion system for the whole HUD. Durations used to be picked per site
+     (180/200/300/400/420/500/600ms across four easings), so the same gesture
+     moved at different speeds depending on which element you looked at.
+     reduceMotion collapses all three to 0ms in one place, which means a new
+     animation cannot forget to honour the setting. */
+  --notch-fast: 160ms;   /* hover, colour, toggles -- immediate feedback */
+  --notch-base: 260ms;   /* entrances: toast, settings panel, hover card */
+  --notch-slow: 420ms;   /* large movement: rail tuck, ring fill and its glow */
+  --notch-ease: cubic-bezier(.16, 1, .3, 1);
+}
+
+[data-reduce-motion='true'] {
+  --notch-fast: 0ms;
+  --notch-base: 0ms;
+  --notch-slow: 0ms;
+}
+
+/* Everything in the HUD travels along the screen edge, so entrances arrive from
+   the right. --notch-tuck is the rail's collapse offset, set only on elements
+   that must come to rest beside the *tucked* rail (the toast); it defaults to 0
+   for anything sitting next to the expanded rail. */
+@keyframes notch-slide-in {
+  from {
+    opacity: 0;
+    transform: translateX(calc(var(--notch-tuck, 0px) + 28px));
+  }
+  to {
+    opacity: 1;
+    transform: translateX(var(--notch-tuck, 0px));
+  }
+}
+
+.notch-enter {
+  transform: translateX(var(--notch-tuck, 0px));
+  animation: notch-slide-in var(--notch-base) var(--notch-ease) both;
 }
 
 html, body, #root {
