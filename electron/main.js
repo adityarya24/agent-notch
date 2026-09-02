@@ -512,7 +512,7 @@ if (gotTheLock) app.whenReady().then(() => {
     }
   });
 
-  pollInterval = setInterval(() => refreshUsageData(), 60000);
+  pollInterval = setInterval(() => refreshUsageData(), Math.max(2000, Number(process.env.NOTCH_POLL_MS) || 60000));
   processActivity.sample(configuredProcessMappings()).finally(() => scheduleJobPoll([], 3000));
 });
 

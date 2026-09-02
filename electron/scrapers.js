@@ -19,7 +19,9 @@ const MAX_BODY_BYTES = 1_000_000;
 
 let googleAccessCache = { token: null, expiresAt: 0 };
 const readerCache = new Map();
-const READER_POLL_MS = 60 * 1000;
+// Overridable so a demo or a test can drive the HUD faster than the shipping
+// cadence. Unset in normal use.
+const READER_POLL_MS = Math.max(1000, Number(process.env.NOTCH_READER_POLL_MS) || 60 * 1000);
 const READER_MAX_BACKOFF_MS = 5 * 60 * 1000;
 const RATE_LIMIT_COOLDOWN_MS = 5 * 60 * 1000;
 const RATE_LIMIT_MIN_COOLDOWN_MS = 60 * 1000;
