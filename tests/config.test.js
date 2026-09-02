@@ -118,3 +118,15 @@ test('migrates legacy custom CLI commands without mixing quota and activity comm
   assert.equal(result.customAgents[2].activityProcess, '');
   assert.equal(result.customAgents[2].command, 'node quota.js');
 });
+
+test('every icon the settings picker offers survives being saved', () => {
+  // The picker and the config allowlist are declared in different files. An option
+  // missing from the allowlist is not rejected -- it is silently rewritten to
+  // 'spark', so the user picks one icon and gets another.
+  const modal = fs.readFileSync(path.join(__dirname, '..', 'src', 'components', 'SettingsModal.jsx'), 'utf8');
+  const offered = [...modal.matchAll(/\{\s*id:\s*'([a-z]+)',\s*label:/g)].map((m) => m[1]);
+  assert.ok(offered.length >= 7, `expected the picker to offer icons, found ${offered.length}`);
+  for (const id of offered) {
+    assert.ok(config.ICONS.has(id), `settings offers icon '${id}' but config.js would rewrite it to 'spark'`);
+  }
+});

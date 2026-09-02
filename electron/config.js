@@ -13,7 +13,9 @@ const DEFAULT_CONFIG = Object.freeze({
   notifyWhenTucked: true
 });
 const QUOTA_SOURCES = new Set(['unknown', 'manual', 'command']);
-const ICONS = new Set(['spark', 'claude', 'codex', 'gemini', 'cursor', 'grok', 'opencode']);
+// Must stay in step with ICON_OPTIONS in src/components/SettingsModal.jsx -- an icon
+// the picker offers but this set omits is silently rewritten to 'spark' on save.
+const ICONS = new Set(['spark', 'claude', 'codex', 'gemini', 'antigravity', 'cursor', 'grok', 'opencode']);
 
 function appDataRoot() {
   const override = String(process.env.NOTCH_CONFIG_DIR || '').trim();
