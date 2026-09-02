@@ -15,21 +15,29 @@
 </p>
 
 <p align="center">
-  <img src="docs/media/handoff.gif" alt="Grok hits 100%, the job moves to Codex, and the card explains the pick" width="560">
+  <img src="docs/media/handoff.webp" alt="Codex runs out of quota, the job moves to Antigravity, and a toast explains the pick" width="900">
 </p>
 
 <p align="center">
-  <em>Grok hits 100%. The job moves to Codex, and the card says why it was picked.<br>
+  <em>Codex runs out. The job moves to Antigravity, and the toast says why — in the colour of wherever it landed.<br>
   The dispatch behind it is <a href="https://github.com/adityarya24/mindsync-ai"><strong>MindSync</strong></a> — Notch shows the orchestration, MindSync does it.</em>
 </p>
 
 <p align="center">
-  <img src="docs/media/demo.gif" alt="Hovering each ring for its usage card, then the settings drawer and adding a custom CLI" width="640">
+  <img src="docs/media/demo.webp" alt="Hovering each ring for its usage card, then the settings drawer and adding a custom CLI" width="900">
 </p>
 
 <p align="center">
   <em>Hover a ring for that account's windows and resets. Red means spent.<br>
   Every CLI can be toggled, and you can add your own.</em>
+</p>
+
+<p align="center">
+  <img src="docs/media/states.png" alt="The three states: tucked at the edge, open with rings, and a hover card showing one account" width="900">
+</p>
+
+<p align="center">
+  <em>Three states, left to right: tucked against the edge, open with every ring, and one account's detail on hover.</em>
 </p>
 
 ---
@@ -89,7 +97,15 @@ Agent Notch detects and tracks live usage for major coding agent ecosystems dire
 - **Settings Drawer**: Toggle which CLIs appear, set the alert threshold, add custom CLIs, turn tuck notifications on/off, and turn handoff animation off.
 - **Edge Collapse**: Hover the rail for a right-facing chevron to tuck it; a left-facing chevron on the same-height remnant pulls it back. The remnant keeps a quota-colored jewel edge. Notch remembers the last chosen state.
 - **Tuck Notifications**: If a quota crosses the critical threshold while the rail is tucked, a glass toast sits beside the remnant. Click it to reveal the HUD. If the window is fully hidden, Windows still shows a desktop toast. Expanded rings already show red, so those stay silent.
+
+<p align="center">
+  <img src="docs/media/alert.webp" alt="A quota crosses its threshold while the rail is tucked and a toast appears beside it" width="900">
+</p>
 - **Live Agent Glow**: Supported local CLI rings breathe in their own quota color when recent session writes or dedicated-process activity indicates work. Concurrent agents glow together with staggered timing; session contents never leave the machine and are not read for display.
+
+<p align="center">
+  <img src="docs/media/glow.webp" alt="One ring breathes in its own quota colour while its agent works" width="900">
+</p>
 
 ---
 
@@ -155,8 +171,6 @@ Manage Agent Notch from any terminal via the `notch` command:
 | `notch status` | Check process status and background PID |
 | `notch autostart` | Register Agent Notch in Windows Startup (logon launch) |
 | `notch disable-startup` | Remove Agent Notch from Windows Startup |
-| `notch smoke` | Run an end-to-end glow & handoff demo on the live HUD (0 quota burn) |
-| `notch smoke --clear` | Clean up leftover test artifacts from smoke runs |
 | `notch provider ...` | Register, list, remove, or discover custom providers |
 | `notch help` | Display available CLI commands |
 
