@@ -10,6 +10,8 @@
   <img src="https://img.shields.io/badge/Node.js-%3E%3D18.0.0-green?style=flat-square&logo=node.js" alt="Node.js">
   <a href="https://github.com/adityarya24/agent-notch/actions/workflows/ci.yml"><img src="https://github.com/adityarya24/agent-notch/actions/workflows/ci.yml/badge.svg?branch=main" alt="CI"></a>
   <a href="https://github.com/adityarya24/agent-notch/releases/latest"><img src="https://img.shields.io/github/v/release/adityarya24/agent-notch?style=flat-square&label=release" alt="Latest release"></a>
+  <a href="https://www.npmjs.com/package/agent-notch"><img src="https://img.shields.io/npm/v/agent-notch?style=flat-square&logo=npm&color=cb3837" alt="npm version"></a>
+  <a href="https://www.npmjs.com/package/agent-notch"><img src="https://img.shields.io/npm/dm/agent-notch?style=flat-square&logo=npm&label=downloads" alt="npm downloads"></a>
   <img src="https://img.shields.io/badge/Stack-Electron%20%7C%20React%2019%20%7C%20Tailwind%20v4-61dafb?style=flat-square" alt="Stack">
   <img src="https://img.shields.io/badge/License-MIT-yellow?style=flat-square" alt="License">
 </p>
@@ -135,7 +137,7 @@ irm https://raw.githubusercontent.com/adityarya24/agent-notch/main/install.ps1 |
 ### Option 2: Global NPM Install
 
 ```bash
-npm i -g github:adityarya24/agent-notch
+npm i -g agent-notch
 notch
 notch autostart
 ```
@@ -143,7 +145,7 @@ notch autostart
 ### Option 3: Run Once via NPX
 
 ```bash
-npx github:adityarya24/agent-notch
+npx agent-notch
 ```
 
 ### Option 4: Local Development Clone
