@@ -47,10 +47,14 @@ function CircularProgressRingInner({
           }}
         />
       )}
+      {/* overflow-visible: the arc fills the full width, and its glow is a
+          drop-shadow that reaches ~10px past it. An SVG viewport clips to its
+          own box by default, which cut the glow off as a hard square edge
+          around the ring. */}
       <svg
         width={size}
         height={size}
-        className="relative z-[1] transform -rotate-90"
+        className="relative z-[1] transform -rotate-90 overflow-visible"
       >
         <circle
           cx={size / 2}
@@ -71,18 +75,25 @@ function CircularProgressRingInner({
           strokeLinecap="round"
           fill="transparent"
           style={{
-            transition: 'stroke-dashoffset 0.6s cubic-bezier(0.16, 1, 0.3, 1), stroke 0.4s ease, filter 0.3s ease',
+            // One duration for all three: the fill used to settle at 600ms
+            // while its glow finished at 300ms, so a single ring appeared to
+            // move at two speeds.
+            transition: 'stroke-dashoffset var(--notch-slow) var(--notch-ease), stroke var(--notch-slow) var(--notch-ease), filter var(--notch-slow) var(--notch-ease)',
             filter: isLive ? liveBloom : idleBloom
           }}
         />
       </svg>
 
-      <div className={`absolute inset-[4px] z-[2] rounded-full bg-[#18181b] flex items-center justify-center overflow-hidden transition-colors duration-200 ${isActive ? 'ring-1 ring-white/30' : 'group-hover:bg-[#27272a]'}`}>
+      <div className={`absolute inset-[4px] z-[2] rounded-full bg-[#18181b] flex items-center justify-center overflow-hidden transition-colors duration-[var(--notch-fast)] ${isActive ? 'ring-1 ring-white/30' : 'group-hover:bg-[#27272a]'}`}>
         {/* The pulse the user actually watches. It lives inside the hub, so it can
             be bright without reaching the next row -- the hub is only 30px wide. */}
         {isLive && (
           <div
-            className={`absolute inset-0 pointer-events-none ${reduceMotion ? '' : 'notch-live-halo'}`}
+            // rounded-full on the halo itself, not just on the hub around it: the
+            // breathe animation composites this element onto its own layer, and a
+            // composited child ignores the parent's rounded overflow clip, so the
+            // gradient's square corners show through.
+            className={`absolute inset-0 rounded-full pointer-events-none ${reduceMotion ? '' : 'notch-live-halo'}`}
             style={{
               background: `radial-gradient(circle, ${ringColor}80 0%, ${ringColor}26 55%, transparent 75%)`,
               opacity: reduceMotion ? 0.55 : undefined,

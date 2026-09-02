@@ -164,7 +164,7 @@ export function SettingsModal({ isOpen, onClose, config, allDetectedIds, onSaveC
   };
 
   return (
-    <div className="w-[300px] max-h-[460px] bg-[#0e0e12]/98 backdrop-blur-2xl border border-[#27272a] rounded-2xl p-3 text-white shadow-2xl shadow-black/90 flex flex-col">
+    <div className="notch-enter w-[300px] max-h-[460px] bg-[#0e0e12]/98 backdrop-blur-2xl border border-[#27272a] rounded-2xl p-3 text-white shadow-2xl shadow-black/90 flex flex-col">
       <div className="flex items-center justify-between pb-2 border-b border-[#27272a]/70 shrink-0">
         <div className="flex items-center gap-2">
           <Sliders className="w-3.5 h-3.5 text-emerald-400" />
@@ -210,7 +210,7 @@ export function SettingsModal({ isOpen, onClose, config, allDetectedIds, onSaveC
                 )}
                 <div
                   onClick={() => toggleModel(m.id)}
-                  className={`w-9 h-5 flex items-center rounded-full p-0.5 transition-colors duration-200 cursor-pointer ${
+                  className={`w-9 h-5 flex items-center rounded-full p-0.5 transition-colors duration-[var(--notch-fast)] cursor-pointer ${
                     isEnabled ? 'bg-emerald-500 justify-end' : 'bg-neutral-700 justify-start'
                   }`}
                 >

@@ -6,8 +6,19 @@ import { ClaudeIcon, OpenAIClassicIcon, CursorIcon, GeminiIcon, AntigravityIcon,
 import { ChevronLeft, ChevronRight, Settings } from 'lucide-react';
 import { moveId, sortModelsByOrder } from './modelOrder';
 
+// How far the rail slides toward the screen edge when collapsed. This is a CSS
+// transform, so layout still sees the rail in its untucked box -- anything that
+// must sit next to the *visible* tucked strip has to be offset by the same
+// amount or it renders a full tuck-width too far away.
+const COLLAPSED_TUCK_PX = 68;
+
 const VISIBLE_RINGS = 4;
-const RING_LIST_MAX_H = VISIBLE_RINGS * 54 + (VISIBLE_RINGS - 1) * 12;
+// The ring list scrolls, and a scroll container clips to its scrollport -- with the
+// rings flush against that edge the live-agent glow gets sheared off. This is the
+// room it needs on every side; the max height grows by the same amount so four
+// rings still fit rather than the icons getting smaller.
+const RING_GLOW_GUTTER = 12;
+const RING_LIST_MAX_H = (VISIBLE_RINGS * 54) + ((VISIBLE_RINGS - 1) * 12) + (RING_GLOW_GUTTER * 2);
 
 function jewelTone(model) {
   if (!model || model.quotaState !== 'known' || model.ringPercent == null) return '#34d399';
@@ -237,6 +248,11 @@ export default function App() {
     || null;
   const jewelColor = jewelTone(jewelModel);
   const alertModel = quotaAlert ? models.find((model) => model.id === quotaAlert.id) : null;
+  // The handoff toast is keyed to where the work went, not where it left, and it
+  // carries that destination's own quota colour -- so a handoff into an agent that
+  // is itself near its limit reads red, which is the useful thing to know.
+  const handoffModel = flash ? models.find((model) => model.id === flash.toRing) : null;
+  const handoffTone = jewelTone(handoffModel);
 
   const scheduleHover = (id) => {
     if (isCollapsed || isSettingsOpen || draggingId) return;
@@ -276,10 +292,13 @@ export default function App() {
   };
 
   return (
-    <div className={`w-full h-full flex items-center justify-end pr-0 select-none font-sans ${isSettingsOpen ? 'overflow-visible' : 'overflow-hidden'}`}>
+    <div
+      data-reduce-motion={reduceMotion ? 'true' : 'false'}
+      className={`w-full h-full flex items-center justify-end pr-0 select-none font-sans ${isSettingsOpen ? 'overflow-visible' : 'overflow-hidden'}`}
+    >
       <div data-hud={isCollapsed ? undefined : true} className="flex items-center justify-end">
       {/* Popover / Settings Area on the Left */}
-      <div className="mr-2 transition-all duration-200 z-50">
+      <div className="mr-2 transition-all duration-[var(--notch-fast)] z-50">
         {isSettingsOpen ? (
           <SettingsModal
             isOpen={isSettingsOpen}
@@ -292,8 +311,15 @@ export default function App() {
           <button
             data-hud
             type="button"
-            className="notch-toast"
-            style={{ borderLeftColor: jewelTone(alertModel), boxShadow: `0 18px 40px rgba(0,0,0,.55), 0 0 18px ${jewelTone(alertModel)}33` }}
+            className="notch-toast notch-enter"
+            style={{
+              // The toast only ever shows while the rail is tucked, so it has to
+              // ride the same offset or it sits a tuck-width from the notch.
+              // notch-enter animates to exactly this resting offset.
+              '--notch-tuck': `${COLLAPSED_TUCK_PX}px`,
+              borderLeftColor: jewelTone(alertModel),
+              boxShadow: `0 18px 40px rgba(0,0,0,.55), 0 0 18px ${jewelTone(alertModel)}33`
+            }}
             onClick={() => setCollapsed(false)}
           >
             <div
@@ -307,6 +333,30 @@ export default function App() {
               <small>{quotaAlert.window} · click to reveal</small>
             </div>
           </button>
+        ) : flash && (flash.fromRing || flash.toRing) ? (
+          // The handoff used to render as a line inside the rail, which made the
+          // pill grow and shrink mid-glance and was invisible while tucked. As a
+          // toast it reads the same in both states and never resizes the pill.
+          <div
+            className="notch-toast notch-enter pointer-events-none"
+            style={{
+              '--notch-tuck': `${isCollapsed ? COLLAPSED_TUCK_PX : 0}px`,
+              borderLeftColor: handoffTone,
+              boxShadow: `0 18px 40px rgba(0,0,0,.55), 0 0 18px ${handoffTone}33`
+            }}
+            title={flash.routingHint || flash.line}
+          >
+            <div
+              className="notch-toast-mini"
+              style={{ color: handoffTone, boxShadow: `inset 0 0 0 2px ${handoffTone}b3` }}
+            >
+              {getModelIcon(handoffModel?.icon || 'spark')}
+            </div>
+            <div>
+              <b>{flash.from} &rarr; {flash.to}</b>
+              <small>{flash.routingHint || 'handed off'}</small>
+            </div>
+          </div>
         ) : (
           hoveredModel && (
             <ModelPopoverCard
@@ -319,13 +369,14 @@ export default function App() {
 
       {/* Side Notch Dock Body with Smooth Scrolling & Settings Gear */}
       <div
-        className={`group/rail relative bg-[#09090b]/98 backdrop-blur-2xl border-l-2 border-t-2 border-b-2 py-3 pl-1 pr-2 rounded-l-[26px] z-40 overflow-hidden flex flex-row items-center gap-2 transition-[transform,border-color,opacity,box-shadow] ease-[cubic-bezier(0.16,1,0.3,1)] ${
+        className={`group/rail relative bg-[#09090b]/98 backdrop-blur-2xl border-l-2 border-t-2 border-b-2 py-3 pl-0.5 pr-2 rounded-l-[26px] z-40 overflow-hidden flex flex-row items-center gap-1 transition-[transform,border-color,opacity,box-shadow] ease-[cubic-bezier(0.16,1,0.3,1)] ${
           isCollapsed
-            ? 'translate-x-[56px] opacity-100'
-            : 'translate-x-0 border-[#27272a] hover:border-[#34d399]/35 opacity-100 shadow-2xl shadow-black/95'
+            ? 'opacity-100'
+            : 'border-[#27272a] hover:border-[#34d399]/35 opacity-100 shadow-2xl shadow-black/95'
         }`}
         style={{
-          transitionDuration: reduceMotion ? '0ms' : '420ms',
+          transform: `translateX(${isCollapsed ? COLLAPSED_TUCK_PX : 0}px)`,
+          transitionDuration: 'var(--notch-slow)',
           borderColor: isCollapsed ? jewelColor : undefined,
           boxShadow: isCollapsed
             ? `0 0 18px ${jewelColor}47, inset 1px 1px 0 rgba(255,255,255,.04)`
@@ -347,7 +398,7 @@ export default function App() {
           title={isCollapsed ? 'Reveal Agent Notch' : 'Tuck away Agent Notch'}
           aria-label={isCollapsed ? 'Reveal Agent Notch' : 'Tuck away Agent Notch'}
           aria-expanded={!isCollapsed}
-          className={`relative z-50 shrink-0 self-center flex items-center justify-center focus:outline-none transition-[opacity,color] duration-200 ${
+          className={`relative z-50 shrink-0 self-center flex items-center justify-center focus:outline-none transition-[opacity,color] duration-[var(--notch-fast)] ${
             isCollapsed
               ? 'w-4 h-10 hover:opacity-90'
               : `w-4 h-8 text-neutral-400 hover:text-emerald-300 ${
@@ -367,13 +418,17 @@ export default function App() {
         <div
           aria-hidden={isCollapsed}
           className={`flex flex-col items-center justify-between gap-2 min-w-[46px] transition-[opacity,filter] ${isCollapsed ? 'pointer-events-none opacity-0 blur-[1px]' : 'opacity-100 blur-0'}`}
-          style={{ transitionDuration: reduceMotion ? '0ms' : '180ms' }}
+          style={{ transitionDuration: 'var(--notch-fast)' }}
         >
         {/* Scrollable Model Rings List */}
         <div
           ref={scrollRef}
           data-hud
-          className="relative flex flex-col items-center gap-3 overflow-y-auto pr-0.5 scrollbar-none overscroll-contain"
+          // px-3, not px-0: this is a scroll container, so it clips its contents to
+          // the scrollport. With the rings flush against that edge the live-agent
+          // glow was sheared off flat on both sides. 12px clears both the halo's
+          // box-shadow (8px) and the arc's drop-shadow bloom (~10px).
+          className="relative flex flex-col items-center gap-3 overflow-y-auto p-3 scrollbar-none overscroll-contain"
           style={{ maxHeight: RING_LIST_MAX_H, scrollbarWidth: 'none', msOverflowStyle: 'none' }}
           title={models.length > VISIBLE_RINGS ? 'Scroll for more · drag to reorder' : 'Drag to reorder'}
         >
@@ -387,7 +442,7 @@ export default function App() {
                 key={m.id}
                 data-hud
                 data-model-id={m.id}
-                className={`relative flex flex-col items-center gap-0.5 group cursor-grab transition-transform duration-200 ${
+                className={`relative flex flex-col items-center gap-0.5 group cursor-grab transition-transform duration-[var(--notch-fast)] ${
                   draggingId === m.id ? 'z-10 scale-105 cursor-grabbing drop-shadow-lg' : ''
                 } ${isFrom && !reduceMotion ? 'opacity-40' : 'opacity-100'}`}
                 onPointerDown={(event) => {
@@ -412,7 +467,7 @@ export default function App() {
                   <div className="absolute -left-3 top-3 text-[9px] text-emerald-300 font-mono">→</div>
                 )}
 
-                <span className={`text-[10px] font-mono font-bold transition-colors duration-200 ${
+                <span className={`text-[10px] font-mono font-bold transition-colors duration-[var(--notch-fast)] ${
                   m.quotaState === 'expired' ? 'text-amber-400' :
                   m.quotaState !== 'known' || m.ringPercent == null ? 'text-neutral-500' :
                   m.status === 'critical' ? 'text-red-400' :
@@ -434,11 +489,6 @@ export default function App() {
           <div className="pointer-events-none h-3 -mt-3 w-full bg-gradient-to-t from-[#09090b] to-transparent" />
         )}
 
-        {flash && (flash.fromRing || flash.toRing) && (
-          <div className="w-full px-0.5 text-center text-[9px] font-mono text-emerald-300 leading-tight" title={flash.routingHint || flash.line}>
-            {flash.line}
-          </div>
-        )}
         <div className="pt-1.5 border-t border-[#27272a]/60 w-full flex justify-center">
           <button
             tabIndex={isCollapsed ? -1 : 0}
@@ -447,7 +497,7 @@ export default function App() {
               setIsSettingsOpen(!isSettingsOpen);
             }}
             title="Customize Visible Models"
-            className={`p-1.5 rounded-full transition-all duration-200 ${
+            className={`p-1.5 rounded-full transition-all duration-[var(--notch-fast)] ${
               isSettingsOpen ? 'bg-emerald-500/20 text-emerald-400 ring-1 ring-emerald-500/40' : 'text-neutral-400 hover:text-white hover:bg-white/10'
             }`}
           >
