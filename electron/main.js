@@ -10,6 +10,7 @@ const { customProcessMappings, ProcessActivityTracker } = require('./process_act
 const { runtimePath, ensureRuntimeDir, writePid, clearPid } = require('./runtime-state');
 const { activityFingerprint, quotaFingerprint, keepLastKnown, formatProviderDebug } = require('./quota-state');
 const { PERSISTED_QUOTA_TTL_MS, readQuotaCache, writeQuotaCache } = require('./quota-cache');
+const { OVERLAY, overlayBounds } = require('./overlay-geometry');
 
 let mainWindow = null;
 let tray = null;
@@ -39,16 +40,6 @@ function configuredProcessMappings() {
   return customProcessMappings(config?.customAgents);
 }
 
-// The hover card is 280px and sits left of the rail with an 8px margin, so the
-// dock has to be wider than card + margin + rail or the card is clipped against
-// the window edge.
-const OVERLAY = {
-  dock: { width: 380, height: 620 },
-  settings: { width: 440, height: 640 },
-  // Collapsing tucks the full-size rail into the screen edge. Keeping the
-  // window footprint stable avoids a detached mini-window and visual jump.
-  collapsed: { width: 380, height: 620 }
-};
 
 function reduceMotionEnabled(cfg) {
   if (process.env.NOTCH_REDUCE_MOTION === '1') return true;
@@ -65,13 +56,8 @@ function quotaConfigFingerprint(config) {
 
 function snapOverlay(mode) {
   overlayMode = Object.hasOwn(OVERLAY, mode) ? mode : 'dock';
-  const size = OVERLAY[overlayMode];
   if (!mainWindow || mainWindow.isDestroyed()) return;
-  const primaryDisplay = screen.getPrimaryDisplay();
-  const { x: workX, y: workY, width: workWidth, height: workHeight } = primaryDisplay.workArea;
-  const posX = Math.max(0, workX + workWidth - size.width);
-  const posY = Math.max(0, workY + Math.round((workHeight - size.height) / 2));
-  const target = { x: posX, y: posY, width: size.width, height: size.height };
+  const target = overlayBounds(overlayMode, screen.getPrimaryDisplay().workArea);
   const start = mainWindow.getBounds();
   if (overlayAnimation) clearInterval(overlayAnimation);
   if (start.x === target.x && start.y === target.y && start.width === target.width && start.height === target.height) return;
@@ -118,22 +104,17 @@ if (!gotTheLock) {
 }
 
 function createOverlayWindow() {
-  const primaryDisplay = screen.getPrimaryDisplay();
-  const { x: workX, y: workY, width: workWidth, height: workHeight } = primaryDisplay.workArea;
   const initialMode = getLocalConfig().collapsed ? 'collapsed' : 'dock';
-  const size = OVERLAY[initialMode];
+  const bounds = overlayBounds(initialMode, screen.getPrimaryDisplay().workArea);
   overlayMode = initialMode;
   const distIndex = path.join(__dirname, '../dist/index.html');
   const distUrl = pathToFileURL(distIndex).href;
 
-  const posX = Math.max(0, workX + workWidth - size.width);
-  const posY = Math.max(0, workY + Math.round((workHeight - size.height) / 2));
-
   mainWindow = new BrowserWindow({
-    width: size.width,
-    height: size.height,
-    x: posX,
-    y: posY,
+    width: bounds.width,
+    height: bounds.height,
+    x: bounds.x,
+    y: bounds.y,
     transparent: true,
     backgroundColor: '#00000000',
     frame: false,
