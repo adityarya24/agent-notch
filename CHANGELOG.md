@@ -4,6 +4,8 @@ All notable changes to Agent Notch are documented here.
 
 ## [Unreleased]
 
+## [1.4.1] - 2026-09-18
+
 ### Changed
 
 - Catalog suggestions spell out the opt-in: one click is icon + glow; usage %
