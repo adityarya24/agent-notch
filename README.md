@@ -233,12 +233,14 @@ notch provider discover --json
 
 `discover` and the Settings suggestions are detection-only: they never add a
 provider silently. The catalog currently recognizes **Aider, GitHub Copilot,
-Amp, Goose, Crush, Qwen, and ZCode**. CLI tools are detected from `PATH`; ZCode
-can also be suggested from its cataloged Windows install path or native process
-when it is not on `PATH`. Click the suggestion in Settings or run `provider add`
-to opt in. Unknown tools must be registered once by the agent/user with the
-command above. `--icon auto` selects a deliberate bundled icon for known
-providers (ZCode uses the Cursor icon) and falls back to the generic Spark icon
+Amp, Goose, Crush, Qwen, Cline, Continue, Roo Code, Factory Droid, Hermes,
+Windsurf, Trae, Zed, Kiro, and ZCode**. CLI tools are detected from `PATH`;
+desktop apps (Windsurf, Trae, Zed, Kiro, ZCode) can also be suggested from a
+cataloged Windows install path or native process when they are not on `PATH`.
+Click the suggestion in Settings or run `provider add` to opt in. Unknown tools
+must be registered once by the agent/user with the command above. `--icon auto`
+selects a deliberate bundled icon for known providers (ZCode and Windsurf use
+the Cursor icon; Cline uses Claude) and falls back to the generic Spark icon
 for unknown providers; Notch does not extract arbitrary executable icons.
 
 ---

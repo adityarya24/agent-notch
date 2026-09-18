@@ -171,8 +171,32 @@ test('known-app discovery can use injected native process/app evidence and never
 
 test('icon auto maps known providers and falls back safely for unknown ones', () => {
   assert.equal(registry.resolveIcon('auto', 'zcode'), 'cursor');
+  assert.equal(registry.resolveIcon('auto', 'windsurf'), 'cursor');
+  assert.equal(registry.resolveIcon('auto', 'cline'), 'claude');
+  assert.equal(registry.resolveIcon('auto', 'cascade'), 'cursor');
   assert.equal(registry.resolveIcon('auto', 'claude-code'), 'claude');
   assert.equal(registry.resolveIcon('auto', 'brand-new-agent'), 'spark');
   assert.equal(registry.resolveIcon('spark', 'zcode'), 'spark');
   assert.throws(() => registry.resolveIcon('not-a-bundled-icon', 'zcode'), /Unknown icon/);
+});
+
+test('known-app discovery finds Windsurf from a cataloged Windows install path without PATH', async () => {
+  const homeDir = path.join(os.tmpdir(), 'windsurf-home');
+  const env = { LOCALAPPDATA: path.join(homeDir, 'AppData', 'Local') };
+  const expectedPath = registry.windowsAppPaths('Windsurf', 'Windsurf.exe', env, homeDir)[0];
+  const suggestions = await registry.discoverProviders({
+    platform: 'win32',
+    env,
+    homeDir,
+    fs: { existsSync: (candidate) => candidate === expectedPath },
+    runningProcesses: [],
+    nativeApps: [],
+    probe: async () => ({ found: false, path: null })
+  });
+  const windsurf = suggestions.find((item) => item.id === 'windsurf');
+  assert.ok(windsurf);
+  assert.equal(windsurf.path, expectedPath);
+  assert.equal(windsurf.evidence, 'known-path');
+  assert.equal(windsurf.activityProcess, 'Windsurf.exe');
+  assert.equal(windsurf.icon, 'cursor');
 });
