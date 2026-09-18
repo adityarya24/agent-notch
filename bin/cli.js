@@ -470,7 +470,6 @@ switch (command) {
     });
     break;
   case 'quota':
-  case 'json':
   case '--json':
     printQuotaDump();
     break;

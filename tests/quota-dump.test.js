@@ -114,4 +114,8 @@ test('notch --json is an alias and missing cache exits 1', (t) => {
   const alias = runQuotaCli(dir, ['--json']);
   assert.equal(alias.status, 0, alias.stderr);
   assert.equal(JSON.parse(alias.stdout).ok, true);
+
+  const undocumented = runQuotaCli(dir, ['json']);
+  assert.equal(undocumented.status, 1);
+  assert.match(undocumented.stderr, /Unknown command: json/);
 });

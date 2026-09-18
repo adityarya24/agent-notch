@@ -11,14 +11,6 @@ All notable changes to Agent Notch are documented here.
   no localhost server. Missing cache exits 1 with `"ok": false`. Display
   fields only — tokens and raw provider payloads stay out of stdout.
 
-- Published to npm as [`agent-notch`](https://www.npmjs.com/package/agent-notch).
-  Install is now `npm i -g agent-notch` rather than pulling the GitHub repo, and
-  `npx agent-notch` runs it once without installing.
-
-- A publish workflow: pushing a `vX.Y.Z` tag runs the full check suite and publishes
-  that version to npm with provenance. It refuses to run if the tag and
-  `package.json` disagree, since an npm version cannot be reused.
-
 ## [1.3.8] - 2026-09-02
 
 ### Fixed
@@ -73,6 +65,14 @@ All notable changes to Agent Notch are documented here.
   animation cannot forget to honour the setting.
 
 ### Added
+
+- Published to npm as [`agent-notch`](https://www.npmjs.com/package/agent-notch).
+  Install is now `npm i -g agent-notch` rather than pulling the GitHub repo, and
+  `npx agent-notch` runs it once without installing.
+
+- A publish workflow: pushing a `vX.Y.Z` tag runs the full check suite and publishes
+  that version to npm with provenance. It refuses to run if the tag and
+  `package.json` disagree, since an npm version cannot be reused.
 
 - Poll cadence can be overridden for tests and captures with `NOTCH_POLL_MS` and
   `NOTCH_READER_POLL_MS`. Unset, the 60s cycle is unchanged.
