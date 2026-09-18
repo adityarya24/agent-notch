@@ -62,8 +62,8 @@ export function ModelPopoverCard({ model, jobActivity }) {
     : '';
 
   return (
-    <div className="w-[280px] bg-[#111114]/95 backdrop-blur-xl border border-[#27272a] rounded-2xl p-4 text-white shadow-2xl shadow-black/80 relative notch-enter">
-      <div className="absolute right-[-7px] top-[24px] w-3.5 h-3.5 bg-[#111114] border-t border-r border-[#27272a] transform rotate-45" />
+    <div className="w-[280px] notch-glass rounded-2xl p-4 text-white relative notch-enter">
+      <div className="absolute right-[-7px] top-[24px] w-3.5 h-3.5 bg-[#16161a] border-t border-r border-white/12 transform rotate-45" />
 
       <div className="flex items-center justify-between gap-2 mb-3">
         <div className="flex items-center gap-2">

@@ -1,10 +1,12 @@
-import React, { useState, useEffect, useMemo, useRef } from 'react';
+import React, { useState, useEffect, useLayoutEffect, useMemo, useRef } from 'react';
 import { CircularProgressRing } from './components/CircularProgressRing';
 import { ModelPopoverCard } from './components/ModelPopoverCard';
 import { SettingsModal } from './components/SettingsModal';
 import { ClaudeIcon, OpenAIClassicIcon, CursorIcon, GeminiIcon, AntigravityIcon, OpenCodeIcon, GrokIcon, SparkIcon } from './components/Icons';
-import { ChevronLeft, ChevronRight, Settings } from 'lucide-react';
+import { ChevronRight, Settings } from 'lucide-react';
 import { moveId, sortModelsByOrder } from './modelOrder';
+import { sparkStops } from './handoffSpark';
+import { useTickedNumber } from './useTickedNumber';
 
 // How far the rail slides toward the screen edge when collapsed. This is a CSS
 // transform, so layout still sees the rail in its untucked box -- anything that
@@ -31,6 +33,58 @@ function jewelTone(model) {
   return '#10b981';
 }
 
+function RingPercentLabel({ model, reduceMotion }) {
+  const known = model.quotaState === 'known' && model.ringPercent != null;
+  const ticked = useTickedNumber(known ? Number(model.ringPercent) : null, { enabled: !reduceMotion });
+  const tone =
+    model.quotaState === 'expired' ? 'text-amber-400' :
+    !known ? 'text-neutral-500' :
+    model.status === 'critical' ? 'text-red-400' :
+    model.status === 'warning' ? 'text-amber-400' :
+    'text-emerald-500';
+  const text = model.quotaState === 'expired' ? 'login' :
+    !known ? '—' :
+    `${model.stale ? '~' : ''}${ticked}%`;
+  return (
+    <span className={`text-[10px] font-mono font-bold transition-colors duration-[var(--notch-fast)] ${tone}`}>
+      {text}
+    </span>
+  );
+}
+
+function HandoffSpark({ flash, hidden, reduceMotion, tone, railRef }) {
+  const [path, setPath] = useState(null);
+
+  useLayoutEffect(() => {
+    if (hidden || reduceMotion || !flash?.fromRing || !flash?.toRing || flash.fromRing === flash.toRing) {
+      setPath(null);
+      return;
+    }
+    const rail = railRef.current;
+    if (!rail) return;
+    const from = rail.querySelector(`[data-model-id="${flash.fromRing}"]`);
+    const to = rail.querySelector(`[data-model-id="${flash.toRing}"]`);
+    if (!from || !to) {
+      setPath(null);
+      return;
+    }
+    setPath(sparkStops(rail.getBoundingClientRect(), from.getBoundingClientRect(), to.getBoundingClientRect()));
+  }, [flash, hidden, reduceMotion, railRef]);
+
+  if (!path) return null;
+  return (
+    <div
+      className="notch-spark"
+      style={{
+        '--spark-from': `${path.from}px`,
+        '--spark-to': `${path.to}px`,
+        background: `radial-gradient(circle, #fff 0%, ${tone} 40%, transparent 70%)`,
+        boxShadow: `0 0 14px ${tone}`
+      }}
+    />
+  );
+}
+
 export default function App() {
   const [data, setData] = useState({
     activeModel: 'codex',
@@ -44,6 +98,7 @@ export default function App() {
   const [isCollapsed, setIsCollapsed] = useState(() => typeof window !== 'undefined' && window.innerWidth < 100);
   const [flash, setFlash] = useState(null);
   const scrollRef = useRef(null);
+  const railRef = useRef(null);
   const ignoringClicks = useRef(null);
   const playedHandoffs = useRef(new Set());
   const collapseInitialized = useRef(false);
@@ -311,7 +366,7 @@ export default function App() {
           <button
             data-hud
             type="button"
-            className="notch-toast notch-enter"
+            className="notch-toast notch-glass notch-enter"
             style={{
               // The toast only ever shows while the rail is tucked, so it has to
               // ride the same offset or it sits a tuck-width from the notch.
@@ -338,7 +393,7 @@ export default function App() {
           // pill grow and shrink mid-glance and was invisible while tucked. As a
           // toast it reads the same in both states and never resizes the pill.
           <div
-            className="notch-toast notch-enter pointer-events-none"
+            className="notch-toast notch-glass notch-enter pointer-events-none"
             style={{
               '--notch-tuck': `${isCollapsed ? COLLAPSED_TUCK_PX : 0}px`,
               borderLeftColor: handoffTone,
@@ -369,14 +424,15 @@ export default function App() {
 
       {/* Side Notch Dock Body with Smooth Scrolling & Settings Gear */}
       <div
-        className={`group/rail relative bg-[#09090b]/98 backdrop-blur-2xl border-l-2 border-t-2 border-b-2 py-3 pl-0.5 pr-2 rounded-l-[26px] z-40 overflow-hidden flex flex-row items-center gap-1 transition-[transform,border-color,opacity,box-shadow] ease-[cubic-bezier(0.16,1,0.3,1)] ${
+        ref={railRef}
+        className={`group/rail relative bg-[#09090b]/98 backdrop-blur-2xl border-l-2 border-t-2 border-b-2 py-3 pl-0.5 pr-2 rounded-l-[26px] z-40 overflow-hidden flex flex-row items-center gap-1 transition-[transform,border-color,opacity,box-shadow] ease-[var(--notch-rail-ease)] ${
           isCollapsed
             ? 'opacity-100'
             : 'border-[#27272a] hover:border-[#34d399]/35 opacity-100 shadow-2xl shadow-black/95'
         }`}
         style={{
           transform: `translateX(${isCollapsed ? COLLAPSED_TUCK_PX : 0}px)`,
-          transitionDuration: 'var(--notch-slow)',
+          transitionDuration: 'var(--notch-rail)',
           borderColor: isCollapsed ? jewelColor : undefined,
           boxShadow: isCollapsed
             ? `0 0 18px ${jewelColor}47, inset 1px 1px 0 rgba(255,255,255,.04)`
@@ -384,6 +440,13 @@ export default function App() {
         }}
         onMouseLeave={scheduleLeave}
       >
+        <HandoffSpark
+          flash={flash}
+          hidden={isCollapsed}
+          reduceMotion={reduceMotion}
+          tone={handoffTone}
+          railRef={railRef}
+        />
         {isCollapsed ? (
           <div
             aria-hidden="true"
@@ -408,17 +471,17 @@ export default function App() {
                 }`
           }`}
         >
-          {isCollapsed ? (
-            <ChevronLeft className="w-3.5 h-3.5" strokeWidth={2.4} style={{ color: jewelColor }} />
-          ) : (
-            <ChevronRight className="w-3.5 h-3.5" strokeWidth={2.4} />
-          )}
+          <ChevronRight
+            className={`w-3.5 h-3.5 transition-transform duration-[var(--notch-rail)] ease-[var(--notch-rail-ease)] ${isCollapsed ? 'rotate-180' : ''}`}
+            strokeWidth={2.4}
+            style={isCollapsed ? { color: jewelColor } : undefined}
+          />
         </button>
 
         <div
           aria-hidden={isCollapsed}
-          className={`flex flex-col items-center justify-between gap-2 min-w-[46px] transition-[opacity,filter] ${isCollapsed ? 'pointer-events-none opacity-0 blur-[1px]' : 'opacity-100 blur-0'}`}
-          style={{ transitionDuration: 'var(--notch-fast)' }}
+          className={`flex flex-col items-center justify-between gap-2 min-w-[46px] transition-[opacity,filter] ease-[var(--notch-rail-ease)] ${isCollapsed ? 'pointer-events-none opacity-0 blur-[1px]' : 'opacity-100 blur-0'}`}
+          style={{ transitionDuration: 'var(--notch-rail)' }}
         >
         {/* Scrollable Model Rings List */}
         <div
@@ -463,21 +526,7 @@ export default function App() {
                 >
                   {getModelIcon(m.icon)}
                 </CircularProgressRing>
-                {isTo && flash && !reduceMotion && (
-                  <div className="absolute -left-3 top-3 text-[9px] text-emerald-300 font-mono">→</div>
-                )}
-
-                <span className={`text-[10px] font-mono font-bold transition-colors duration-[var(--notch-fast)] ${
-                  m.quotaState === 'expired' ? 'text-amber-400' :
-                  m.quotaState !== 'known' || m.ringPercent == null ? 'text-neutral-500' :
-                  m.status === 'critical' ? 'text-red-400' :
-                  m.status === 'warning' ? 'text-amber-400' :
-                  'text-emerald-500'
-                }`}>
-                  {m.quotaState === 'expired' ? 'login' :
-                    m.quotaState !== 'known' || m.ringPercent == null ? '—' :
-                    `${m.stale ? '~' : ''}${m.ringPercent}%`}
-                </span>
+                <RingPercentLabel model={m} reduceMotion={reduceMotion} />
               </div>
             );
             })
