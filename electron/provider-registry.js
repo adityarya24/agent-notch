@@ -13,12 +13,58 @@ const WINDOWS = 'win32';
 // providers always use the bundled Spark icon; Notch never reads arbitrary
 // executable icons from disk.
 const PROVIDER_CATALOG = Object.freeze([
-  { id: 'aider', name: 'Aider', provider: 'Custom', command: 'aider', activityProcess: 'aider', icon: 'spark' },
+  { id: 'aider', name: 'Aider', provider: 'Aider', command: 'aider', activityProcess: 'aider', icon: 'spark' },
   { id: 'copilot', name: 'GitHub Copilot', provider: 'GitHub', command: 'copilot', activityProcess: 'copilot', icon: 'codex' },
   { id: 'amp', name: 'Amp', provider: 'Sourcegraph', command: 'amp', activityProcess: 'amp', icon: 'spark' },
   { id: 'goose', name: 'Goose', provider: 'Block', command: 'goose', activityProcess: 'goose', icon: 'spark' },
   { id: 'crush', name: 'Crush', provider: 'Charm', command: 'crush', activityProcess: 'crush', icon: 'spark' },
   { id: 'qwen', name: 'Qwen', provider: 'Alibaba', command: 'qwen', activityProcess: 'qwen', icon: 'spark' },
+  { id: 'cline', name: 'Cline', provider: 'Cline', command: 'cline', activityProcess: 'cline', icon: 'claude' },
+  { id: 'continue', name: 'Continue', provider: 'Continue', command: 'continue', activityProcess: 'continue', icon: 'spark', aliases: ['cn'] },
+  { id: 'roo', name: 'Roo Code', provider: 'Roo Code', command: 'roo', activityProcess: 'roo', icon: 'spark', aliases: ['roo-code', 'roocode'] },
+  { id: 'droid', name: 'Factory Droid', provider: 'Factory', command: 'droid', activityProcess: 'droid', icon: 'spark' },
+  { id: 'hermes', name: 'Hermes', provider: 'Hermes Agent', command: 'hermes', activityProcess: 'hermes', icon: 'spark' },
+  {
+    id: 'windsurf',
+    name: 'Windsurf',
+    provider: 'Codeium · Windsurf',
+    command: 'windsurf',
+    activityProcess: 'Windsurf.exe',
+    icon: 'cursor',
+    aliases: ['cascade', 'codeium'],
+    windowsPaths: (env, homeDir) => windowsAppPaths('Windsurf', 'Windsurf.exe', env, homeDir),
+    nativeAppNames: ['Windsurf']
+  },
+  {
+    id: 'trae',
+    name: 'Trae',
+    provider: 'ByteDance · Trae',
+    command: 'trae',
+    activityProcess: 'Trae.exe',
+    icon: 'spark',
+    windowsPaths: (env, homeDir) => windowsAppPaths('Trae', 'Trae.exe', env, homeDir),
+    nativeAppNames: ['Trae']
+  },
+  {
+    id: 'zed',
+    name: 'Zed',
+    provider: 'Zed',
+    command: 'zed',
+    activityProcess: 'Zed.exe',
+    icon: 'spark',
+    windowsPaths: (env, homeDir) => windowsAppPaths('Zed', 'Zed.exe', env, homeDir),
+    nativeAppNames: ['Zed']
+  },
+  {
+    id: 'kiro',
+    name: 'Kiro',
+    provider: 'Amazon · Kiro',
+    command: 'kiro',
+    activityProcess: 'Kiro.exe',
+    icon: 'spark',
+    windowsPaths: (env, homeDir) => windowsAppPaths('Kiro', 'Kiro.exe', env, homeDir),
+    nativeAppNames: ['Kiro']
+  },
   {
     id: 'zcode',
     name: 'ZCode',
@@ -63,6 +109,18 @@ function envValue(env, ...keys) {
     if (value) return value;
   }
   return '';
+}
+
+function windowsAppPaths(folder, exe, env = process.env, homeDir = os.homedir()) {
+  const localAppData = envValue(env, 'LOCALAPPDATA', 'LocalAppData')
+    || path.join(homeDir, 'AppData', 'Local');
+  const programFiles = envValue(env, 'ProgramFiles', 'PROGRAMFILES');
+  const programFilesX86 = envValue(env, 'ProgramFiles(x86)', 'PROGRAMFILES(X86)');
+  return [
+    path.join(localAppData, 'Programs', folder, exe),
+    programFiles && path.join(programFiles, folder, exe),
+    programFilesX86 && path.join(programFilesX86, folder, exe)
+  ].filter(Boolean);
 }
 
 function zcodeWindowsPaths(env = process.env, homeDir = os.homedir()) {
@@ -410,6 +468,7 @@ module.exports = {
   resolveIcon,
   suggestCustomClis,
   zcodeWindowsPaths,
+  windowsAppPaths,
   _test: {
     detectEntry,
     matchingNativeApp,

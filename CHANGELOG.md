@@ -20,6 +20,11 @@ All notable changes to Agent Notch are documented here.
 
 ### Added
 
+- Discovery catalog now also recognizes Cline, Continue, Roo Code, Factory Droid,
+  Hermes, Windsurf, Trae, Zed, and Kiro. Still detection-only — Settings /
+  `notch provider discover` suggest them; nothing is added to the HUD until you
+  opt in. Desktop apps use cataloged Windows install paths the same way ZCode does.
+
 - `notch quota` (alias `notch --json`) prints the last HUD quota snapshot as
   JSON for local orchestrators. Cache-only: no Electron spawn, no live scrape,
   no localhost server. Missing cache exits 1 with `"ok": false`. Display
