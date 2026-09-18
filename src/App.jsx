@@ -11,8 +11,10 @@ import { useTickedNumber } from './useTickedNumber';
 // How far the rail slides toward the screen edge when collapsed. This is a CSS
 // transform, so layout still sees the rail in its untucked box -- anything that
 // must sit next to the *visible* tucked strip has to be offset by the same
-// amount or it renders a full tuck-width too far away.
-const COLLAPSED_TUCK_PX = 68;
+// amount or it renders a full tuck-width too far away. 70 - 48 = 22px remnant,
+// close to the old 92 - 68 strip so the chevron still has a finger target.
+const COLLAPSED_TUCK_PX = 48;
+const RAIL_WIDTH_PX = 70;
 
 const VISIBLE_RINGS = 4;
 // The ring list scrolls, and a scroll container clips to its scrollport -- with the
@@ -425,15 +427,15 @@ export default function App() {
       {/* Side Notch Dock Body with Smooth Scrolling & Settings Gear */}
       <div
         ref={railRef}
-        className={`group/rail relative bg-[#09090b]/98 backdrop-blur-2xl border-l-2 border-t-2 border-b-2 py-3 pl-0.5 pr-2 rounded-l-[26px] z-40 overflow-hidden flex flex-row items-center gap-1 transition-[transform,border-color,opacity,box-shadow] ease-[var(--notch-rail-ease)] ${
-          isCollapsed
-            ? 'opacity-100'
-            : 'border-[#27272a] hover:border-[#34d399]/35 opacity-100 shadow-2xl shadow-black/95'
+        className={`group/rail notch-rail relative z-40 overflow-hidden flex flex-row items-center py-2 transition-[transform,box-shadow] ease-[var(--notch-rail-ease)] ${
+          isCollapsed ? '' : 'shadow-2xl shadow-black/80'
         }`}
         style={{
+          width: RAIL_WIDTH_PX,
+          borderTopLeftRadius: RAIL_WIDTH_PX / 2,
+          borderBottomLeftRadius: RAIL_WIDTH_PX / 2,
           transform: `translateX(${isCollapsed ? COLLAPSED_TUCK_PX : 0}px)`,
           transitionDuration: 'var(--notch-rail)',
-          borderColor: isCollapsed ? jewelColor : undefined,
           boxShadow: isCollapsed
             ? `0 0 18px ${jewelColor}47, inset 1px 1px 0 rgba(255,255,255,.04)`
             : undefined
@@ -450,7 +452,7 @@ export default function App() {
         {isCollapsed ? (
           <div
             aria-hidden="true"
-            className="absolute left-0 top-3 bottom-3 w-[3px] rounded-r-full pointer-events-none"
+            className="absolute left-0 top-4 bottom-4 w-[3px] rounded-r-full pointer-events-none"
             style={{ background: jewelColor }}
           />
         ) : null}
@@ -461,9 +463,9 @@ export default function App() {
           title={isCollapsed ? 'Reveal Agent Notch' : 'Tuck away Agent Notch'}
           aria-label={isCollapsed ? 'Reveal Agent Notch' : 'Tuck away Agent Notch'}
           aria-expanded={!isCollapsed}
-          className={`relative z-50 shrink-0 self-center flex items-center justify-center focus:outline-none transition-[opacity,color] duration-[var(--notch-fast)] ${
+          className={`absolute left-0 top-1/2 -translate-y-1/2 z-50 flex items-center justify-center focus:outline-none transition-[opacity,color] duration-[var(--notch-fast)] ${
             isCollapsed
-              ? 'w-4 h-10 hover:opacity-90'
+              ? 'w-5 h-10 hover:opacity-90'
               : `w-4 h-8 text-neutral-400 hover:text-emerald-300 ${
                   hoveredModel || isSettingsOpen
                     ? 'opacity-0 pointer-events-none'
@@ -480,7 +482,7 @@ export default function App() {
 
         <div
           aria-hidden={isCollapsed}
-          className={`flex flex-col items-center justify-between gap-2 min-w-[46px] transition-[opacity,filter] ease-[var(--notch-rail-ease)] ${isCollapsed ? 'pointer-events-none opacity-0 blur-[1px]' : 'opacity-100 blur-0'}`}
+          className={`w-full flex flex-col items-center justify-between gap-1.5 transition-[opacity,filter] ease-[var(--notch-rail-ease)] ${isCollapsed ? 'pointer-events-none opacity-0 blur-[1px]' : 'opacity-100 blur-0'}`}
           style={{ transitionDuration: 'var(--notch-rail)' }}
         >
         {/* Scrollable Model Rings List */}
@@ -538,7 +540,7 @@ export default function App() {
           <div className="pointer-events-none h-3 -mt-3 w-full bg-gradient-to-t from-[#09090b] to-transparent" />
         )}
 
-        <div className="pt-1.5 border-t border-[#27272a]/60 w-full flex justify-center">
+        <div className="pt-1 w-full flex justify-center">
           <button
             tabIndex={isCollapsed ? -1 : 0}
             onClick={() => {
@@ -546,11 +548,11 @@ export default function App() {
               setIsSettingsOpen(!isSettingsOpen);
             }}
             title="Customize Visible Models"
-            className={`p-1.5 rounded-full transition-all duration-[var(--notch-fast)] ${
-              isSettingsOpen ? 'bg-emerald-500/20 text-emerald-400 ring-1 ring-emerald-500/40' : 'text-neutral-400 hover:text-white hover:bg-white/10'
+            className={`p-1 rounded-full transition-all duration-[var(--notch-fast)] ${
+              isSettingsOpen ? 'bg-emerald-500/20 text-emerald-400 ring-1 ring-emerald-500/40' : 'text-neutral-500 hover:text-white hover:bg-white/10'
             }`}
           >
-            <Settings className="w-3.5 h-3.5" />
+            <Settings className="w-3 h-3" />
           </button>
         </div>
         </div>

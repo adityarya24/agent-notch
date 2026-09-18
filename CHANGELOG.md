@@ -13,6 +13,11 @@ All notable changes to Agent Notch are documented here.
   down the rail. Quota-arc fill stays on the 420ms curve. Reduce-motion zeroes
   the new durations and hides the spark.
 
+- Open rail is a 70px half-pill (radius 35) instead of a 92px rounded box.
+  Inner padding stays 12px so the live glow does not clip; the chevron overlays
+  rather than adding a second column. Settings loses its divider. Collapse
+  offset is 48px so the tucked remnant stays ~22px.
+
 ### Added
 
 - `notch quota` (alias `notch --json`) prints the last HUD quota snapshot as
