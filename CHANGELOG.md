@@ -4,6 +4,23 @@ All notable changes to Agent Notch are documented here.
 
 ## [Unreleased]
 
+## [1.4.0] - 2026-09-18
+
+### Added
+
+- Discovery catalog now also recognizes Cline, Continue, Roo Code, Factory Droid,
+  Hermes, Windsurf, Trae, Zed, and Kiro. Still detection-only — Settings /
+  `notch provider discover` suggest them; nothing is added to the HUD until you
+  opt in. Desktop apps use cataloged Windows install paths the same way ZCode does.
+  Opt-in copies the catalog icon and native process (glow). Quota stays unknown
+  unless you attach a JSON command or a manual snapshot — Notch does not invent
+  usage percentages for tools without a grounded reader.
+
+- `notch quota` (alias `notch --json`) prints the last HUD quota snapshot as
+  JSON for local orchestrators. Cache-only: no Electron spawn, no live scrape,
+  no localhost server. Missing cache exits 1 with `"ok": false`. Display
+  fields only — tokens and raw provider payloads stay out of stdout.
+
 ### Changed
 
 - HUD motion polish from the approved preview: collapse/reveal is one 520ms
@@ -17,18 +34,6 @@ All notable changes to Agent Notch are documented here.
   Inner padding stays 12px so the live glow does not clip; the chevron overlays
   rather than adding a second column. Settings loses its divider. Collapse
   offset is 48px so the tucked remnant stays ~22px.
-
-### Added
-
-- Discovery catalog now also recognizes Cline, Continue, Roo Code, Factory Droid,
-  Hermes, Windsurf, Trae, Zed, and Kiro. Still detection-only — Settings /
-  `notch provider discover` suggest them; nothing is added to the HUD until you
-  opt in. Desktop apps use cataloged Windows install paths the same way ZCode does.
-
-- `notch quota` (alias `notch --json`) prints the last HUD quota snapshot as
-  JSON for local orchestrators. Cache-only: no Electron spawn, no live scrape,
-  no localhost server. Missing cache exits 1 with `"ok": false`. Display
-  fields only — tokens and raw provider payloads stay out of stdout.
 
 ## [1.3.8] - 2026-09-02
 
