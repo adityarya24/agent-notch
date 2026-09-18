@@ -59,7 +59,7 @@
 
 ## 📊 Supported Providers & Quota Adapters
 
-Agent Notch detects and tracks live usage for major coding agent ecosystems directly from local session vaults:
+Agent Notch detects and tracks live usage for major coding agent ecosystems directly from local session vaults. **Live percentages only exist where a grounded reader exists.** Suggested apps get an icon and activity glow on opt-in; they do not get invented quota.
 
 | Provider / Ring | Monitored Windows | Data Source & Detection |
 | :--- | :--- | :--- |
@@ -69,7 +69,9 @@ Agent Notch detects and tracks live usage for major coding agent ecosystems dire
 | **Cursor** | Monthly Period Usage | Cursor IDE local state (`state.vscdb` / session token) |
 | **Grok CLI** | Included quota when exposed | Grok CLI local configuration & billing endpoint; signed-in unavailable usage stays explicit |
 | **OpenCode Go** | Go Subscription Usage | OpenCode Go plan quota (excludes BYOK local engines) |
-| **Custom CLIs** | Dynamic / Custom | Known-app suggestions or explicit `notch provider register`; JSON stdout reader or manual snapshot |
+| **Custom / catalog CLIs** | Glow now; quota only if you attach it | Settings suggestion or `notch provider add`. Icon + native process come from the catalog. Quota stays `—` until a JSON command or manual snapshot is set. |
+
+Catalog suggestions (detection-only, never silent-add): **Aider, GitHub Copilot, Amp, Goose, Crush, Qwen, Cline, Continue, Roo Code, Factory Droid, Hermes, Windsurf, Trae, Zed, Kiro, ZCode**. On add: catalog icon (Windsurf/ZCode → Cursor mark, Cline → Claude mark, else Spark) and process glow. No fake usage bar.
 
 ---
 
@@ -95,9 +97,9 @@ Agent Notch detects and tracks live usage for major coding agent ecosystems dire
   - 🟡 **Warning (50% – 80%)**: Approaching session threshold.
   - 🔴 **Critical (80%+)**: Imminent rate-limit window.
 - **Hover Popover Cards**: Detailed dual-meter breakdown (Session vs. Weekly/Monthly) with exact humanized reset countdowns (e.g. *“Resets in 2h 15m”*).
-- **Compact Viewport**: Four rings stay in view; extra rings scroll. Drag a ring to put your most-used agents on top.
+- **Compact Viewport**: 70px half-pill on the right edge. Four rings stay in view; extra rings scroll. Drag a ring to put your most-used agents on top.
 - **Settings Drawer**: Toggle which CLIs appear, set the alert threshold, add custom CLIs, turn tuck notifications on/off, and turn handoff animation off.
-- **Edge Collapse**: Hover the rail for a right-facing chevron to tuck it; a left-facing chevron on the same-height remnant pulls it back. The remnant keeps a quota-colored jewel edge. Notch remembers the last chosen state.
+- **Edge Collapse**: Hover the rail for a chevron to tuck it; the same remnant pulls it back. Collapse and reveal share one spring. The remnant keeps a quota-colored jewel edge. Notch remembers the last chosen state.
 - **Tuck Notifications**: If a quota crosses the critical threshold while the rail is tucked, a glass toast sits beside the remnant. Click it to reveal the HUD. If the window is fully hidden, Windows still shows a desktop toast. Expanded rings already show red, so those stay silent.
 
 <p align="center">

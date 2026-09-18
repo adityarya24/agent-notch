@@ -140,8 +140,9 @@ export function SettingsModal({ isOpen, onClose, config, allDetectedIds, onSaveC
   };
 
   const addFromSuggestion = (item) => {
+    const slug = String(item.id || '').replace(/[^A-Za-z0-9_-]/g, '') || Date.now().toString(36);
     addAgent({
-      id: `custom_${Date.now().toString(36)}`,
+      id: `custom_${slug}`,
       name: item.name,
       modelName: '',
       provider: item.provider || 'Custom',
