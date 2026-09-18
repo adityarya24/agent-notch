@@ -4,6 +4,11 @@ All notable changes to Agent Notch are documented here.
 
 ## [Unreleased]
 
+### Changed
+
+- Catalog suggestions spell out the opt-in: one click is icon + glow; usage %
+  stays a dash until a JSON quota command exists. Custom hover cards say the same.
+
 ## [1.4.0] - 2026-09-18
 
 ### Added

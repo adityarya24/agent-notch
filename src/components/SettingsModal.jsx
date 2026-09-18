@@ -225,14 +225,14 @@ export function SettingsModal({ isOpen, onClose, config, allDetectedIds, onSaveC
         {suggestions.length > 0 && (
           <div className="mt-1">
             <span className="text-[11px] font-mono text-neutral-400 uppercase tracking-wider">
-              Found apps / CLIs — click to add
+              Found on this PC
             </span>
             <div className="mt-1.5 flex flex-wrap gap-1.5">
               {suggestions.map((item) => (
                 <button
                   key={item.id || item.command}
                   onClick={() => addFromSuggestion(item)}
-                  title={item.path || item.command}
+                  title={`${item.name}: icon + glow. Quota stays a dash until you add a JSON command.`}
                   className="px-2 py-1 rounded-lg border border-white/10 bg-white/[0.04] text-[11px] text-neutral-200 hover:border-emerald-500/40 hover:text-white"
                 >
                   + {item.name}
@@ -240,7 +240,8 @@ export function SettingsModal({ isOpen, onClose, config, allDetectedIds, onSaveC
               ))}
             </div>
             <p className="mt-1 text-[10px] text-neutral-500 leading-snug">
-              Dash until a quota command exists. No fake live %. Unknown terminals are never registered silently.
+              One click = icon and live glow. Usage % does not appear until a quota command
+              prints JSON (below). Notch never guesses a number.
             </p>
           </div>
         )}
