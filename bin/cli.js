@@ -15,6 +15,8 @@ const {
   registerProvider,
   removeProvider
 } = require('../electron/provider-registry');
+const { readQuotaCache } = require('../electron/quota-cache');
+const { buildQuotaDump } = require('../electron/quota-dump');
 
 const rootDir = path.resolve(__dirname, '..');
 const distIndex = path.join(rootDir, 'dist', 'index.html');
@@ -387,6 +389,13 @@ async function runProviderCommand(providerArgs) {
   throw new Error(`Unknown provider command: ${subcommand}`);
 }
 
+function printQuotaDump() {
+  const snapshot = readQuotaCache(runtimePath('quota-cache.json'));
+  const dump = buildQuotaDump(snapshot);
+  console.log(JSON.stringify(dump, null, 2));
+  if (!dump.ok) process.exitCode = 1;
+}
+
 function printHelp() {
   console.log(`Agent Notch — right-edge AI quota HUD
 
@@ -400,6 +409,8 @@ Commands:
   notch stop            Quit the HUD
   notch restart         Stop + start
   notch status          Running or not
+  notch quota           Print the last quota snapshot as JSON (no HUD, no live scrape)
+  notch --json          Alias for notch quota
   notch autostart       Launch at Windows logon
   notch disable-startup Remove logon launch
   notch smoke           Glow demo on the live HUD (no quota burn)
@@ -408,6 +419,7 @@ Commands:
   notch help            This text
 
 Hotkey Ctrl+Shift+U only works while Notch is running (hide/show).
+quota / --json reads the HUD cache. Launch Notch once so the cache exists.
 `);
 }
 
@@ -456,6 +468,11 @@ switch (command) {
       console.error(`Provider command failed: ${err.message || err}`);
       process.exitCode = 1;
     });
+    break;
+  case 'quota':
+  case 'json':
+  case '--json':
+    printQuotaDump();
     break;
   case 'help':
   case '--help':

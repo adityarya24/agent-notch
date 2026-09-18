@@ -6,6 +6,11 @@ All notable changes to Agent Notch are documented here.
 
 ### Added
 
+- `notch quota` (alias `notch --json`) prints the last HUD quota snapshot as
+  JSON for local orchestrators. Cache-only: no Electron spawn, no live scrape,
+  no localhost server. Missing cache exits 1 with `"ok": false`. Display
+  fields only — tokens and raw provider payloads stay out of stdout.
+
 - Published to npm as [`agent-notch`](https://www.npmjs.com/package/agent-notch).
   Install is now `npm i -g agent-notch` rather than pulling the GitHub repo, and
   `npx agent-notch` runs it once without installing.

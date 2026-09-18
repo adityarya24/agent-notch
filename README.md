@@ -171,10 +171,41 @@ Manage Agent Notch from any terminal via the `notch` command:
 | `notch stop` / `notch kill` | Safely terminate the HUD process |
 | `notch restart` | Perform a clean stop and restart |
 | `notch status` | Check process status and background PID |
+| `notch quota` / `notch --json` | Print the last quota snapshot as JSON (no HUD, no live scrape) |
 | `notch autostart` | Register Agent Notch in Windows Startup (logon launch) |
 | `notch disable-startup` | Remove Agent Notch from Windows Startup |
 | `notch provider ...` | Register, list, remove, or discover custom providers |
 | `notch help` | Display available CLI commands |
+
+### Quota dump for local orchestrators
+
+`notch quota` (alias `notch --json`) prints the HUD's last quota snapshot to stdout. It does **not** start Electron, scrape providers, or open a localhost port — orchestrators can poll it without burning quota.
+
+```bash
+notch quota
+# or: notch --json
+```
+
+```json
+{
+  "ok": true,
+  "source": "cache",
+  "savedAt": "2026-09-18T04:00:00.000Z",
+  "models": [
+    {
+      "id": "claude",
+      "name": "Claude Code",
+      "quotaState": "known",
+      "ringPercent": 89,
+      "sessionUsedPercent": 36,
+      "weeklyUsedPercent": 89,
+      "stale": true
+    }
+  ]
+}
+```
+
+Launch Notch once so the cache exists. Missing or empty cache exits `1` with `"ok": false`. Secrets never appear in the dump. A localhost endpoint is not in this release — same dump, extra process.
 
 > [!NOTE]
 > **Hotkey**: Press <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>U</kbd> to toggle HUD visibility while running. (Note: Hotkey toggles visibility of the active instance; if the process is stopped via `notch stop`, launch it again using `notch`).
