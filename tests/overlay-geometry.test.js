@@ -34,8 +34,8 @@ test('the window stays vertically centred in the work area', () => {
   }
 });
 
-test('the settings panel still fits: modal 300 + margin 8 + rail 92', () => {
-  assert.ok(overlaySize('settings').width >= 300 + 8 + 92);
+test('the settings panel still fits: modal 300 + margin 8 + rail 70', () => {
+  assert.ok(overlaySize('settings').width >= 300 + 8 + 70);
   assert.ok(overlaySize('settings').height >= 460, 'modal max-height must fit');
 });
 

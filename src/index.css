@@ -84,9 +84,19 @@ body {
   }
 }
 
+.notch-rail {
+  background:
+    linear-gradient(180deg, rgba(255, 255, 255, 0.05), transparent 28%),
+    rgba(9, 9, 11, 0.92);
+  outline: 1px solid rgba(255, 255, 255, 0.08);
+  outline-offset: -1px;
+  box-shadow: inset 1px 1px 0 rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(18px);
+}
+
 .notch-spark {
   position: absolute;
-  left: 40px;
+  left: 29px;
   width: 12px;
   height: 12px;
   margin-top: -6px;
