@@ -99,6 +99,15 @@ export function ModelPopoverCard({ model, jobActivity }) {
         </div>
       ) : null}
 
+      {state !== 'known' && String(model.id || '').startsWith('custom_') ? (
+        <div className="mb-2 rounded-lg border border-white/10 bg-white/[0.04] px-2.5 py-1.5 text-[10px] text-neutral-400 leading-snug">
+          Glow tracks the process. Usage % needs a JSON quota command in Settings
+          {' '}(<span className="font-mono text-neutral-300">sessionUsedPercent</span>
+          {' / '}
+          <span className="font-mono text-neutral-300">weeklyUsedPercent</span>).
+        </div>
+      ) : null}
+
       {routingLine ? (
         <div className="w-full mt-2 py-1.5 px-3 bg-emerald-500/10 border border-emerald-500/25 rounded-lg flex items-center gap-2 text-[11px] text-emerald-300 font-medium leading-snug">
           <ArrowRight className="w-3.5 h-3.5 shrink-0" />
