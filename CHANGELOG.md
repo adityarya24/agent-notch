@@ -4,6 +4,15 @@ All notable changes to Agent Notch are documented here.
 
 ## [Unreleased]
 
+### Changed
+
+- HUD motion polish from the approved preview: collapse/reveal is one 520ms
+  spring, rings fade with the slide, the chevron rotates, quota numbers tick
+  with the arc, a live critical ring breathes faster (still opacity-only),
+  hover/toast cards use the same glass material, and a handoff draws a spark
+  down the rail. Quota-arc fill stays on the 420ms curve. Reduce-motion zeroes
+  the new durations and hides the spark.
+
 ### Added
 
 - `notch quota` (alias `notch --json`) prints the last HUD quota snapshot as

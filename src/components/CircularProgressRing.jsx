@@ -39,7 +39,7 @@ function CircularProgressRingInner({
           onto the neighbouring icons and washed out this ring's own percentage. */}
       {isLive && (
         <div
-          className={`absolute inset-0 rounded-full pointer-events-none ${reduceMotion ? '' : 'notch-live-halo'}`}
+          className={`absolute inset-0 rounded-full pointer-events-none ${reduceMotion ? '' : `notch-live-halo${status === 'critical' ? ' notch-live-halo-critical' : ''}`}`}
           style={{
             boxShadow: `0 0 7px 1px ${ringColor}`,
             opacity: reduceMotion ? 0.5 : undefined,
@@ -93,7 +93,7 @@ function CircularProgressRingInner({
             // breathe animation composites this element onto its own layer, and a
             // composited child ignores the parent's rounded overflow clip, so the
             // gradient's square corners show through.
-            className={`absolute inset-0 rounded-full pointer-events-none ${reduceMotion ? '' : 'notch-live-halo'}`}
+            className={`absolute inset-0 rounded-full pointer-events-none ${reduceMotion ? '' : `notch-live-halo${status === 'critical' ? ' notch-live-halo-critical' : ''}`}`}
             style={{
               background: `radial-gradient(circle, ${ringColor}80 0%, ${ringColor}26 55%, transparent 75%)`,
               opacity: reduceMotion ? 0.55 : undefined,
