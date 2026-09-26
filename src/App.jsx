@@ -3,7 +3,7 @@ import { CircularProgressRing } from './components/CircularProgressRing';
 import { ModelPopoverCard } from './components/ModelPopoverCard';
 import { SettingsModal } from './components/SettingsModal';
 import { ClaudeIcon, OpenAIClassicIcon, CursorIcon, GeminiIcon, AntigravityIcon, OpenCodeIcon, GrokIcon, SparkIcon } from './components/Icons';
-import { ChevronRight, Settings } from 'lucide-react';
+import { ChevronRight, RefreshCw, Settings } from 'lucide-react';
 import { moveId, sortModelsByOrder } from './modelOrder';
 import { sparkStops } from './handoffSpark';
 import { useTickedNumber } from './useTickedNumber';
@@ -97,6 +97,7 @@ export default function App() {
 
   const [hoveredModelId, setHoveredModelId] = useState(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [isRefreshing, setIsRefreshing] = useState(false);
   const [isCollapsed, setIsCollapsed] = useState(() => typeof window !== 'undefined' && window.innerWidth < 100);
   const [flash, setFlash] = useState(null);
   const scrollRef = useRef(null);
@@ -200,6 +201,19 @@ export default function App() {
       return { success: true, config: newCfg };
     } catch (error) {
       return { success: false, message: error.message || 'Could not save settings' };
+    }
+  };
+
+  const handleRefresh = async () => {
+    if (isRefreshing || !window.agentNotchAPI?.refreshUsageData) return;
+    setIsRefreshing(true);
+    try {
+      const result = await window.agentNotchAPI.refreshUsageData();
+      if (result?.models) setData(result);
+    } catch (error) {
+      console.error('[Agent Notch] Manual quota refresh failed:', error);
+    } finally {
+      setIsRefreshing(false);
     }
   };
 
@@ -540,7 +554,19 @@ export default function App() {
           <div className="pointer-events-none h-3 -mt-3 w-full bg-gradient-to-t from-[#09090b] to-transparent" />
         )}
 
-        <div className="pt-1 w-full flex justify-center">
+        <div className="pt-1 w-full flex justify-center gap-1">
+          <button
+            data-hud
+            type="button"
+            tabIndex={isCollapsed ? -1 : 0}
+            onClick={handleRefresh}
+            disabled={isRefreshing}
+            title={isRefreshing ? 'Refreshing quotas…' : 'Refresh quotas now'}
+            aria-label={isRefreshing ? 'Refreshing quotas' : 'Refresh quotas now'}
+            className="p-1 rounded-full text-neutral-500 hover:text-white hover:bg-white/10 disabled:cursor-wait disabled:text-emerald-400 transition-all duration-[var(--notch-fast)]"
+          >
+            <RefreshCw className={`w-3 h-3 ${isRefreshing ? 'animate-spin' : ''}`} />
+          </button>
           <button
             tabIndex={isCollapsed ? -1 : 0}
             onClick={() => {

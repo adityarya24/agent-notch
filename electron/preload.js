@@ -5,6 +5,7 @@ contextBridge.exposeInMainWorld('agentNotchAPI', {
     ipcRenderer.send('set-ignore-mouse-events', ignore, options);
   },
   getUsageData: () => ipcRenderer.invoke('get-usage-data'),
+  refreshUsageData: () => ipcRenderer.invoke('refresh-usage-data'),
   triggerHandoff: (modelId) => ipcRenderer.invoke('trigger-handoff', modelId),
   saveConfig: (cfg) => ipcRenderer.invoke('save-config', cfg),
   getConfig: () => ipcRenderer.invoke('get-config'),
