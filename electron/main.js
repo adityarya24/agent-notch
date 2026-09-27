@@ -368,6 +368,11 @@ ipcMain.handle('get-usage-data', async () => {
   return cachedQuotaState || refreshUsageData();
 });
 
+ipcMain.handle('refresh-usage-data', async () => {
+  if (usageRefreshPromise) await usageRefreshPromise;
+  return refreshUsageData({ force: true });
+});
+
 ipcMain.handle('get-config', () => {
   return getLocalConfig();
 });

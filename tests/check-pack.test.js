@@ -17,6 +17,18 @@ test('package report parser ignores lifecycle output before npm JSON', () => {
   ]);
 });
 
+test('package report parser accepts the newer npm object keyed by package name', () => {
+  // Newer npm prints `{ "agent-notch": { ... } }` instead of `[{ ... }]`; CI's npm
+  // still prints the array, so only a local run caught the difference.
+  const report = { size: 123, files: [{ path: 'dist/index.html' }] };
+  const output = [
+    'build complete',
+    JSON.stringify({ 'agent-notch': report }, null, 2)
+  ].join('\n');
+
+  assert.deepEqual(parsePackReport(output), [report]);
+});
+
 test('every electron main-process file parses', () => {
   // `npm test` never requires main.js -- it needs an Electron runtime -- so a syntax
   // error there sails past a fully green suite and only shows up as a window that

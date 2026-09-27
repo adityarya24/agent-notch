@@ -4,6 +4,22 @@ All notable changes to Agent Notch are documented here.
 
 ## [Unreleased]
 
+## [1.4.2] - 2026-09-27
+
+### Added
+
+- A refresh button next to Settings at the foot of the rail re-reads every
+  provider on demand, the same as the tray's "Refresh Quotas Now". The icon spins
+  while the read is in flight and further clicks wait for it. A rate-limit
+  cooldown still wins: during one, the button returns the last known reading
+  instead of forcing another request.
+
+### Fixed
+
+- `npm run pack:check` understands the newer npm `pack --json` shape (an object
+  keyed by package name, not an array). It failed on newer npm locally while CI's
+  older npm kept it green.
+
 ## [1.4.1] - 2026-09-18
 
 ### Changed

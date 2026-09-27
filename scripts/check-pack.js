@@ -1,13 +1,22 @@
 const { spawnSync } = require('node:child_process');
 
+// Older npm prints `[{ files }]`; newer npm prints `{ "<name>": { files } }`.
+// Normalize both to the array form.
+function asPackReport(candidate) {
+  const reports = Array.isArray(candidate) ? candidate : Object.values(candidate || {});
+  return Array.isArray(reports[0]?.files) ? reports : null;
+}
+
 function parsePackReport(output) {
   const text = String(output || '');
-  const end = text.lastIndexOf(']');
-  for (let start = text.lastIndexOf('[', end); start >= 0; start = text.lastIndexOf('[', start - 1)) {
-    try {
-      const candidate = JSON.parse(text.slice(start, end + 1));
-      if (Array.isArray(candidate) && Array.isArray(candidate[0]?.files)) return candidate;
-    } catch (error) {}
+  for (const [open, close] of [['[', ']'], ['{', '}']]) {
+    const end = text.lastIndexOf(close);
+    for (let start = text.lastIndexOf(open, end); start >= 0; start = text.lastIndexOf(open, start - 1)) {
+      try {
+        const report = asPackReport(JSON.parse(text.slice(start, end + 1)));
+        if (report) return report;
+      } catch (error) {}
+    }
   }
   throw new Error('no valid package report found');
 }
