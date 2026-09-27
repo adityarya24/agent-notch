@@ -1,6 +1,6 @@
 {
   "name": "agent-notch",
-  "version": "1.4.1",
+  "version": "1.4.2",
   "description": "Ambient right-edge desktop HUD for live AI coding-agent quotas. Windows-first, standalone, optional MindSync glow.",
   "main": "electron/main.js",
   "bin": {
@@ -43,7 +43,8 @@
     "pack:check": "node scripts/check-pack.js",
     "smoke": "node scripts/smoke-glow.js --hud",
     "smoke:logic": "node scripts/smoke-glow.js",
-    "smoke:glow": "node scripts/smoke-glow.js --hud"
+    "smoke:glow": "node scripts/smoke-glow.js --hud",
+    "media:make": "node scripts/make-product-media.js"
   },
   "keywords": [
     "ai-agent",
