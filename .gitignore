@@ -22,5 +22,7 @@ capture_once.log
 docs/media/raw/
 docs/media/desktop.png
 docs/media/desktop-edge.png
+output/
+scripts/__pycache__/
 start_background.vbs
 start_notch.vbs

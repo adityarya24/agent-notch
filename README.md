@@ -321,6 +321,22 @@ Not on the list: free-floating drag, fake desktop glass, or job transfer (that s
 
 ---
 
+## Product media capture
+
+From a development checkout with dependencies installed, run `npm run media:make`.
+The command builds the current UI, opens an isolated Electron fixture, captures
+the quota hover, settings, and handoff states, then renders a silent 22.6-second
+horizontal (1920×1080) and vertical (1080×1920) MP4 plus three 1920×1080 PNGs.
+Outputs go to a timestamped directory under `output/product-media/`; the command
+prints the exact location. Pass an empty output directory after `--` to choose one:
+`npm run media:make -- C:\path\to\empty-directory`.
+
+The capture reads no local provider credentials or dispatch history and makes no
+provider requests. Percentages and handoffs are marked as demo data in every
+frame. Python 3 with Pillow and FFmpeg/FFprobe on `PATH` are required.
+
+---
+
 ## 📜 License
 
 MIT License © 2026 [Aditya Arya](https://github.com/adityarya24)
