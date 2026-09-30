@@ -367,11 +367,12 @@ test('a rate-limit cooldown cannot be bypassed by a forced refresh', async () =>
   assert.equal(calls, 2);
 });
 
-test('rate limits do not escalate the failure backoff', async () => {
+test('rate limits escalate their own ladder without touching failure backoff', async () => {
   let mode = 'limited';
   let calls = 0;
+  const waits = [];
   const entry = {
-    id: 'test_rate_limit_no_escalation',
+    id: 'test_rate_limit_ladder_escalation',
     read: async () => {
       calls += 1;
       return mode === 'limited'
@@ -379,12 +380,28 @@ test('rate limits do not escalate the failure backoff', async () => {
         : { quotaState: 'known', ringPercent: 7 };
     }
   };
-  await _test.readWithCache(entry, { now: 1000 });
-  await _test.readWithCache(entry, { now: 61_001 });
-  await _test.readWithCache(entry, { now: 121_002 });
-  assert.equal(calls, 3, 'cooldown stays flat instead of doubling');
+  const t0 = 1000;
+  const first = await _test.readWithCache(entry, { now: t0 });
+  waits.push(first.retryAfterMs);
+  assert.equal(first.retryAfterMs, 60_000);
+  assert.match(first.sessionResetText, /retrying in 1m/);
+
+  const second = await _test.readWithCache(entry, { now: t0 + first.retryAfterMs + 1 });
+  waits.push(second.retryAfterMs);
+  assert.equal(second.retryAfterMs, 120_000);
+
+  const third = await _test.readWithCache(entry, {
+    now: t0 + first.retryAfterMs + second.retryAfterMs + 2
+  });
+  waits.push(third.retryAfterMs);
+  assert.equal(third.retryAfterMs, 240_000);
+  assert.equal(calls, 3);
+  assert.deepEqual(waits, [60_000, 120_000, 240_000]);
+
   mode = 'ok';
-  const recovered = await _test.readWithCache(entry, { now: 181_003 });
+  const recovered = await _test.readWithCache(entry, {
+    now: t0 + first.retryAfterMs + second.retryAfterMs + third.retryAfterMs + 3
+  });
   assert.equal(recovered.quotaState, 'known');
   assert.equal(recovered.ringPercent, 7);
 });
@@ -405,4 +422,145 @@ test('the Claude reader honours a sane retry-after header', () => {
 test('the rate limit label reads as a wait, not a reset', () => {
   const card = _test.claudeCardFromResponse({ status: 429, headers: { 'retry-after': '120' } });
   assert.equal(card.sessionResetText, 'Rate limited · retrying in 2m');
+});
+
+test('rate-limit ladder doubles from 60s and caps at 15 minutes', () => {
+  assert.equal(_test.rateLimitLadderMs(1), 60_000);
+  assert.equal(_test.rateLimitLadderMs(2), 120_000);
+  assert.equal(_test.rateLimitLadderMs(3), 240_000);
+  assert.equal(_test.rateLimitLadderMs(4), 480_000);
+  assert.equal(_test.rateLimitLadderMs(5), 900_000);
+  assert.equal(_test.rateLimitLadderMs(6), 900_000);
+  assert.equal(_test.rateLimitLadderMs(20), _test.RATE_LIMIT_MAX_HOLD_MS);
+});
+
+test('resolveRateLimitWaitMs lets a longer retry-after win and still caps', () => {
+  // First 429 keeps the historical 5-minute default when the server is silent.
+  assert.equal(_test.resolveRateLimitWaitMs(1, undefined), _test.RATE_LIMIT_COOLDOWN_MS);
+  assert.equal(_test.resolveRateLimitWaitMs(1, 60_000), 60_000);
+  assert.equal(_test.resolveRateLimitWaitMs(1, 180_000), 180_000);
+  assert.equal(_test.resolveRateLimitWaitMs(2, 60_000), 120_000);
+  assert.equal(_test.resolveRateLimitWaitMs(3, 60_000), 240_000);
+  // Server value longer than the ladder wins.
+  assert.equal(_test.resolveRateLimitWaitMs(1, 600_000), 600_000);
+  // Hard cap at 15 minutes.
+  assert.equal(_test.resolveRateLimitWaitMs(1, 3_600_000), _test.RATE_LIMIT_MAX_HOLD_MS);
+  assert.equal(_test.resolveRateLimitWaitMs(10, 60_000), _test.RATE_LIMIT_MAX_HOLD_MS);
+});
+
+test('a non-429 answer resets the rate-limit streak', async () => {
+  let calls = 0;
+  const entry = {
+    id: 'test_rate_limit_streak_reset',
+    read: async () => {
+      calls += 1;
+      if (calls <= 2) {
+        return { quotaState: 'unknown', rateLimited: true, retryAfterMs: 60_000 };
+      }
+      if (calls === 3) return { quotaState: 'known', ringPercent: 11 };
+      return { quotaState: 'unknown', rateLimited: true, retryAfterMs: 60_000 };
+    }
+  };
+  const first = await _test.readWithCache(entry, { now: 1000 });
+  assert.equal(first.retryAfterMs, 60_000);
+  const second = await _test.readWithCache(entry, { now: 61_001 });
+  assert.equal(second.retryAfterMs, 120_000);
+  await _test.readWithCache(entry, { now: 181_002 });
+  const afterReset = await _test.readWithCache(entry, { now: 241_003 });
+  assert.equal(afterReset.rateLimited, true);
+  assert.equal(afterReset.retryAfterMs, 60_000, 'streak must restart after a successful read');
+  assert.equal(afterReset.sessionResetText, 'Rate limited · retrying in 1m');
+});
+
+test('persisted cooldown is honoured after a simulated restart', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-notch-rl-'));
+  const stateFile = path.join(dir, 'rate-limit-state.json');
+  try {
+    _test.setRateLimitStateFile(stateFile);
+    let calls = 0;
+    const entry = {
+      id: 'test_rate_limit_persist',
+      read: async () => {
+        calls += 1;
+        return { quotaState: 'unknown', rateLimited: true, retryAfterMs: 300_000 };
+      }
+    };
+    const limited = await _test.readWithCache(entry, { now: 5_000 });
+    assert.equal(calls, 1);
+    assert.equal(limited.retryAfterMs, 300_000);
+    assert.ok(fs.existsSync(stateFile));
+
+    // Simulate process restart: empty memory, same on-disk state.
+    _test.resetReaderCache();
+    _test.setRateLimitStateFile(stateFile);
+
+    await _test.readWithCache(entry, { now: 10_000, force: true });
+    await _test.readWithCache(entry, { now: 100_000, force: true });
+    assert.equal(calls, 1, 'restart must not spend a request during the persisted cooldown');
+
+    await _test.readWithCache(entry, { now: 5_000 + 300_000 + 1, force: true });
+    assert.equal(calls, 2);
+  } finally {
+    _test.setRateLimitStateFile(null);
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('persisted streak escalates across a simulated restart', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-notch-rl-streak-'));
+  const stateFile = path.join(dir, 'rate-limit-state.json');
+  try {
+    _test.setRateLimitStateFile(stateFile);
+    let calls = 0;
+    const entry = {
+      id: 'test_rate_limit_persist_streak',
+      read: async () => {
+        calls += 1;
+        return { quotaState: 'unknown', rateLimited: true, retryAfterMs: 60_000 };
+      }
+    };
+    const first = await _test.readWithCache(entry, { now: 1_000 });
+    assert.equal(first.retryAfterMs, 60_000);
+
+    _test.resetReaderCache();
+    _test.setRateLimitStateFile(stateFile);
+
+    const second = await _test.readWithCache(entry, { now: 61_001 });
+    assert.equal(calls, 2);
+    assert.equal(second.retryAfterMs, 120_000);
+    assert.equal(second.sessionResetText, 'Rate limited · retrying in 2m');
+  } finally {
+    _test.setRateLimitStateFile(null);
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
+});
+
+test('corrupt or missing rate-limit state files are ignored', async () => {
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'agent-notch-rl-bad-'));
+  const missing = path.join(dir, 'nope.json');
+  const corrupt = path.join(dir, 'corrupt.json');
+  fs.writeFileSync(corrupt, '{not-json', 'utf8');
+  try {
+    _test.setRateLimitStateFile(missing);
+    let calls = 0;
+    const entry = {
+      id: 'test_rate_limit_missing_state',
+      read: async () => {
+        calls += 1;
+        return { quotaState: 'known', ringPercent: 3 };
+      }
+    };
+    const ok = await _test.readWithCache(entry, { now: 1000 });
+    assert.equal(ok.ringPercent, 3);
+    assert.equal(calls, 1);
+
+    _test.resetReaderCache();
+    _test.setRateLimitStateFile(corrupt);
+    const ok2 = await _test.readWithCache(entry, { now: 2000 });
+    assert.equal(ok2.ringPercent, 3);
+    assert.equal(calls, 2);
+  } finally {
+    _test.setRateLimitStateFile(null);
+    fs.rmSync(dir, { recursive: true, force: true });
+  }
 });

@@ -7,6 +7,8 @@ const { exec, execFile } = require('child_process');
 const { DEFAULT_CONFIG, getLocalConfig, saveLocalConfig } = require('./config');
 const { sortModelsByOrder } = require('./model-order');
 const providerRegistry = require('./provider-registry');
+const { runtimePath } = require('./runtime-state');
+const { readRateLimitState, writeRateLimitState } = require('./rate-limit-state');
 
 const homeDir = os.homedir();
 
@@ -28,6 +30,12 @@ const RATE_LIMIT_MIN_COOLDOWN_MS = 60 * 1000;
 // How long a throttled reader may keep showing its last good reading before it
 // admits it no longer knows.
 const RATE_LIMIT_MAX_HOLD_MS = 15 * 60 * 1000;
+// Consecutive 429s escalate: 60s, 120s, 240s, … capped at RATE_LIMIT_MAX_HOLD_MS.
+const RATE_LIMIT_LADDER_BASE_MS = RATE_LIMIT_MIN_COOLDOWN_MS;
+let rateLimitStateFile = runtimePath('rate-limit-state.json');
+let rateLimitStateHydrated = false;
+// Tests set this so unit runs never touch the real runtime dir.
+let rateLimitStateWriteEnabled = true;
 
 function readJson(filePath) {
   return JSON.parse(fs.readFileSync(filePath, 'utf8'));
@@ -250,9 +258,104 @@ function retryAfterMs(headers, fallbackMs = RATE_LIMIT_COOLDOWN_MS) {
   return Math.min(Math.max(seconds * 1000, RATE_LIMIT_MIN_COOLDOWN_MS), RATE_LIMIT_MAX_HOLD_MS);
 }
 
+// streak 1 → 60s, 2 → 120s, 3 → 240s, … capped at 15 min.
+function rateLimitLadderMs(streak) {
+  const n = Number.isInteger(streak) && streak > 0 ? streak : 1;
+  const exp = Math.min(n - 1, 20);
+  return Math.min(RATE_LIMIT_LADDER_BASE_MS * (2 ** exp), RATE_LIMIT_MAX_HOLD_MS);
+}
+
+// Server retry-after (already normalised) wins when longer; first 429 keeps the
+// prior 5-min default via retryAfterMs() unless the ladder has already grown past it.
+function resolveRateLimitWaitMs(streak, reportedMs) {
+  const ladder = rateLimitLadderMs(streak);
+  const reported = Number.isFinite(reportedMs) && reportedMs > 0
+    ? reportedMs
+    : RATE_LIMIT_COOLDOWN_MS;
+  return Math.min(Math.max(ladder, reported), RATE_LIMIT_MAX_HOLD_MS);
+}
+
 function formatWaitShort(ms) {
   const minutes = Math.max(1, Math.round(ms / 60_000));
   return `${minutes}m`;
+}
+
+function rateLimitLabel(waitMs) {
+  return `Rate limited · retrying in ${formatWaitShort(waitMs)}`;
+}
+
+function emptyReaderState() {
+  return {
+    result: null,
+    failures: 0,
+    nextPollAt: 0,
+    cooldownUntil: 0,
+    streak: 0,
+    inFlight: null
+  };
+}
+
+function collectRateLimitReaders(now = Date.now()) {
+  const readers = {};
+  for (const [id, entry] of readerCache.entries()) {
+    const streak = Number.isInteger(entry.streak) ? entry.streak : 0;
+    const cooldownUntil = Number.isFinite(entry.cooldownUntil) ? entry.cooldownUntil : 0;
+    if (streak <= 0 && cooldownUntil <= now) continue;
+    readers[id] = { cooldownUntil, streak };
+  }
+  return readers;
+}
+
+function persistRateLimitState(now = Date.now()) {
+  if (!rateLimitStateWriteEnabled) return false;
+  try {
+    return writeRateLimitState(rateLimitStateFile, collectRateLimitReaders(now));
+  } catch (err) {
+    return false;
+  }
+}
+
+function hydrateRateLimitState(now = Date.now()) {
+  const loaded = readRateLimitState(rateLimitStateFile, now);
+  if (!loaded || !loaded.readers) return false;
+  for (const [id, entry] of Object.entries(loaded.readers)) {
+    const existing = readerCache.get(id) || emptyReaderState();
+    const cooldownUntil = Math.max(existing.cooldownUntil || 0, entry.cooldownUntil || 0);
+    const streak = Math.max(existing.streak || 0, entry.streak || 0);
+    readerCache.set(id, {
+      ...existing,
+      cooldownUntil,
+      streak,
+      nextPollAt: Math.max(existing.nextPollAt || 0, cooldownUntil)
+    });
+  }
+  return true;
+}
+
+function ensureRateLimitStateHydrated(now = Date.now()) {
+  if (rateLimitStateHydrated) return;
+  rateLimitStateHydrated = true;
+  if (!rateLimitStateWriteEnabled) return;
+  hydrateRateLimitState(now);
+}
+
+function setRateLimitStateFileForTest(filePath) {
+  if (filePath) {
+    rateLimitStateFile = filePath;
+    rateLimitStateWriteEnabled = true;
+    rateLimitStateHydrated = false;
+    return;
+  }
+  rateLimitStateFile = runtimePath('rate-limit-state.json');
+  rateLimitStateWriteEnabled = false;
+  rateLimitStateHydrated = true;
+}
+
+function resetReaderCacheForTest() {
+  readerCache.clear();
+  // Stay hydrated-empty and do not write the user's real runtime state file.
+  rateLimitStateWriteEnabled = false;
+  rateLimitStateHydrated = true;
 }
 
 function claudeCardFromResponse(res, name = 'Claude Code', provider = 'Anthropic · Claude') {
@@ -272,7 +375,7 @@ function claudeCardFromResponse(res, name = 'Claude Code', provider = 'Anthropic
       ...base,
       quotaState: 'unknown',
       authState: 'signed_in',
-      sessionResetText: `Rate limited · retrying in ${formatWaitShort(waitMs)}`,
+      sessionResetText: rateLimitLabel(waitMs),
       weeklyResetText: 'Anthropic usage API is throttling',
       status: 'unknown'
     });
@@ -1361,8 +1464,8 @@ function holdLastKnown(previous, limited, now) {
 }
 
 function readWithCache(entry, { force = false, now = Date.now() } = {}) {
-  const existing = readerCache.get(entry.id)
-    || { result: null, failures: 0, nextPollAt: 0, cooldownUntil: 0, inFlight: null };
+  ensureRateLimitStateHydrated(now);
+  const existing = readerCache.get(entry.id) || emptyReaderState();
   if (existing.inFlight) return existing.inFlight.then(cloneResult);
   // A rate-limit cooldown is not negotiable: forcing through it is what turns one
   // 429 into a run of them.
@@ -1377,15 +1480,25 @@ function readWithCache(entry, { force = false, now = Date.now() } = {}) {
       const result = raw ? { ...raw, attemptedAt } : null;
 
       if (result && result.rateLimited) {
-        const waitMs = Number.isFinite(result.retryAfterMs) ? result.retryAfterMs : RATE_LIMIT_COOLDOWN_MS;
+        const streak = (Number.isInteger(existing.streak) ? existing.streak : 0) + 1;
+        const waitMs = resolveRateLimitWaitMs(streak, result.retryAfterMs);
+        result.retryAfterMs = waitMs;
+        result.sessionResetText = rateLimitLabel(waitMs);
         const held = holdLastKnown(existing.result, result, now);
+        if (held) {
+          held.retryAfterMs = waitMs;
+          // Surface the real wait even when the last good reading is still shown.
+          held.sessionResetText = rateLimitLabel(waitMs);
+        }
         readerCache.set(entry.id, {
           result: held,
           failures: existing.failures,
           nextPollAt: now + waitMs,
           cooldownUntil: now + waitMs,
+          streak,
           inFlight: null
         });
+        persistRateLimitState(now);
         return cloneResult(held);
       }
 
@@ -1393,7 +1506,18 @@ function readWithCache(entry, { force = false, now = Date.now() } = {}) {
       if (available) result.observedAt = attemptedAt;
       const failures = available ? 0 : existing.failures + 1;
       const delay = available ? pollMs : readerDelay(failures, pollMs);
-      readerCache.set(entry.id, { result, failures, nextPollAt: now + delay, cooldownUntil: 0, inFlight: null });
+      // Any non-429 answer clears the rate-limit streak.
+      readerCache.set(entry.id, {
+        result,
+        failures,
+        nextPollAt: now + delay,
+        cooldownUntil: 0,
+        streak: 0,
+        inFlight: null
+      });
+      if ((existing.streak || 0) > 0 || (existing.cooldownUntil || 0) > 0) {
+        persistRateLimitState(now);
+      }
       return cloneResult(result);
     })
     .catch(() => {
@@ -1407,6 +1531,7 @@ function readWithCache(entry, { force = false, now = Date.now() } = {}) {
         failures,
         nextPollAt: now + readerDelay(failures, pollMs),
         cooldownUntil: 0,
+        streak: existing.streak || 0,
         inFlight: null
       });
       return cloneResult(result);
@@ -1466,6 +1591,15 @@ module.exports = {
     quotaStatus,
     parseGrokBillingConfig,
     readWithCache,
-    resetReaderCache: () => readerCache.clear()
+    rateLimitLadderMs,
+    resolveRateLimitWaitMs,
+    rateLimitLabel,
+    RATE_LIMIT_COOLDOWN_MS,
+    RATE_LIMIT_MIN_COOLDOWN_MS,
+    RATE_LIMIT_MAX_HOLD_MS,
+    setRateLimitStateFile: setRateLimitStateFileForTest,
+    hydrateRateLimitState,
+    persistRateLimitState,
+    resetReaderCache: resetReaderCacheForTest
   }
 };
