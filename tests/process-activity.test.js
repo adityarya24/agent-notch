@@ -21,6 +21,20 @@ test('maps only dedicated CLI process names', () => {
   assert.equal(ringForProcess('node.exe'), null);
 });
 
+test('ringsForSample keeps exe-name matching and adds fingerprints', () => {
+  const { ringsForSample } = require('../electron/process_activity');
+  assert.deepEqual(ringsForSample({ name: 'codex.exe', cpuSeconds: 1, pid: 1 }), ['codex']);
+  assert.deepEqual(
+    ringsForSample({
+      name: 'node',
+      pid: 2,
+      cpuSeconds: 1,
+      commandLine: '/home/u/.npm/node_modules/@anthropic-ai/claude-code/cli.js'
+    }),
+    ['claude']
+  );
+});
+
 test('accepts only exact native executables for custom activity', () => {
   assert.equal(activityExecutable('fixture-agent.exe'), 'fixture-agent');
   assert.equal(activityExecutable('"C:\\Program Files\\Fixture\\fixture-agent.exe"'), 'fixture-agent');

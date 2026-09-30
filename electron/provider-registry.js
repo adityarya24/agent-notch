@@ -4,6 +4,7 @@ const path = require('path');
 const { execFile } = require('child_process');
 const { ICONS, getLocalConfig, sanitizeConfig, saveLocalConfig } = require('./config');
 const { activityExecutable, normalizeProcessName } = require('./process_activity');
+const { resolveActivityFingerprint, sanitizeFingerprint } = require('./fingerprints');
 
 const DEFAULT_ICON = 'spark';
 const WINDOWS = 'win32';
@@ -226,7 +227,7 @@ function quotaSource(value) {
   throw new Error('Quota mode must be none, manual, or command');
 }
 
-function buildProvider(input = {}) {
+function buildProvider(input = {}, options = {}) {
   if (!input || typeof input !== 'object') throw new Error('Provider details are required');
   const name = text(input.name || input.displayName);
   if (!name) throw new Error('Display name is required');
@@ -243,6 +244,18 @@ function buildProvider(input = {}) {
   if (source === 'manual' && session == null && weekly == null) {
     throw new Error('At least one session or weekly percent is required for manual quota');
   }
+
+  let activityFingerprint = sanitizeFingerprint(input.activityFingerprint || input.fingerprint || '');
+  if (!activityFingerprint && options.skipFingerprintResolve !== true) {
+    const resolveFrom = text(input.resolveCommand || entry?.command || activityProcess);
+    activityFingerprint = resolveActivityFingerprint(resolveFrom, {
+      explicit: input.activityFingerprint || input.fingerprint,
+      platform: options.platform,
+      resolvePath: options.resolvePath,
+      readFileSync: options.readFileSync
+    }) || '';
+  }
+
   return {
     id: canonicalId(input.id || input.providerId, name),
     name,
@@ -255,13 +268,14 @@ function buildProvider(input = {}) {
     sessionResetText: text(input.sessionResetText),
     weeklyResetText: text(input.weeklyResetText),
     activityProcess,
+    activityFingerprint: activityFingerprint || '',
     command: source === 'command' ? command : ''
   };
 }
 
 function registerProvider(input, options = {}) {
   const current = sanitizeConfig(options.config || getLocalConfig());
-  const agent = buildProvider(input);
+  const agent = buildProvider(input, options);
   const customAgents = current.customAgents.filter((item) => item.id !== agent.id);
   const enabledModels = { ...current.enabledModels, [agent.id]: true };
   const next = (options.save || saveLocalConfig)({
@@ -425,6 +439,7 @@ async function discoverProviders(options = {}) {
       provider: entry.provider,
       command: entry.command,
       activityProcess: entry.activityProcess,
+      activityFingerprint: entry.activityFingerprint || '',
       icon: resolveIcon('auto', entry.id),
       path: detected.path,
       evidence: detected.evidence,

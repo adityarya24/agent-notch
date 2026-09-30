@@ -6,7 +6,8 @@ const { getAllInstalledAgentUsage, getLocalConfig, saveLocalConfig, probeCli, su
 const { readJobActivity } = require('./handoff_status');
 const { evaluateQuotaAlerts, formatAlertBody } = require('./alert-notify');
 const { mergeActiveRings, readDirectAgentActivity } = require('./direct_activity');
-const { customProcessMappings, ProcessActivityTracker } = require('./process_activity');
+const { customActivityBindings, ProcessActivityTracker } = require('./process_activity');
+const { enrichCustomAgentsFingerprints } = require('./fingerprints');
 const { runtimePath, ensureRuntimeDir, writePid, clearPid } = require('./runtime-state');
 const { activityFingerprint, quotaFingerprint, keepLastKnown, formatProviderDebug } = require('./quota-state');
 const { PERSISTED_QUOTA_TTL_MS, readQuotaCache, writeQuotaCache } = require('./quota-cache');
@@ -38,7 +39,7 @@ function configuredProcessMappings() {
   // Activity settings must reflect the just-saved file even when a slower
   // quota refresh is still resolving with its older config snapshot.
   const config = getLocalConfig();
-  return customProcessMappings(config?.customAgents);
+  return customActivityBindings(config?.customAgents);
 }
 
 
@@ -381,7 +382,11 @@ ipcMain.handle('get-config', () => {
 ipcMain.handle('save-config', async (_event, newConfig) => {
   try {
     const previous = getLocalConfig();
-    const config = saveLocalConfig(newConfig);
+    const incoming = newConfig && typeof newConfig === 'object' ? { ...newConfig } : {};
+    if (Array.isArray(incoming.customAgents)) {
+      incoming.customAgents = enrichCustomAgentsFingerprints(incoming.customAgents);
+    }
+    const config = saveLocalConfig(incoming);
     if (quotaConfigFingerprint(previous) !== quotaConfigFingerprint(config)) {
       await refreshUsageData({ force: true });
     } else if (cachedQuotaState) {

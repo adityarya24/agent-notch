@@ -269,6 +269,7 @@ Add/register options:
   --session <0-100>              Manual session usage percent
   --weekly <0-100>               Manual weekly usage percent
   --command "..."                Trusted local command that prints quota JSON
+  --fingerprint "..."            Optional cmdline/path substring for activity detection
   --provider "..."               Provider label shown in the HUD
   --icon auto|spark|claude|codex|gemini|cursor|grok|opencode
 
@@ -276,7 +277,8 @@ Discovery only returns suggestions. It never edits config. Known apps such as
 ZCode can be found from a cataloged install path or running native process even
 when no zcode command is on PATH. Use Settings or add/register to opt in.
 Activity processes must be exact native executable names; generic runtimes and
-shell wrappers are rejected.
+shell wrappers are rejected. When possible, add also stores an activityFingerprint
+resolved from PATH shims (npm/python) without executing them.
 `);
 }
 
@@ -291,7 +293,8 @@ function printProviderList(providers, asJson) {
   }
   for (const provider of providers) {
     const quota = provider.quotaSource === 'unknown' ? 'none' : provider.quotaSource;
-    console.log(`${provider.id}\t${provider.name}\tprocess=${provider.activityProcess}\tquota=${quota}\ticon=${provider.icon}`);
+    const fp = provider.activityFingerprint ? `\tfingerprint=${provider.activityFingerprint}` : '';
+    console.log(`${provider.id}\t${provider.name}\tprocess=${provider.activityProcess}${fp}\tquota=${quota}\ticon=${provider.icon}`);
   }
 }
 
@@ -328,6 +331,8 @@ async function runProviderCommand(providerArgs) {
       name: options.name || options.displayName,
       provider: options.provider,
       activityProcess: options.process || options['activity-process'],
+      activityFingerprint: options.fingerprint || options['activity-fingerprint'],
+      resolveCommand: options['resolve-command'] || options.resolve || undefined,
       quota: options.quota || options['quota-source'],
       quotaCommand: options.command || options['quota-command'],
       session: options.session,
@@ -341,6 +346,9 @@ async function runProviderCommand(providerArgs) {
       const quota = result.agent.quotaSource === 'unknown' ? 'none' : result.agent.quotaSource;
       console.log(`Provider ${result.created ? 'registered' : 'updated'}: ${result.agent.name} (${result.agent.id})`);
       console.log(`  process: ${result.agent.activityProcess}`);
+      if (result.agent.activityFingerprint) {
+        console.log(`  fingerprint: ${result.agent.activityFingerprint}`);
+      }
       console.log(`  quota:   ${quota}`);
       console.log(`  icon:    ${result.agent.icon}`);
     }

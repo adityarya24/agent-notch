@@ -60,6 +60,8 @@ function sanitizeCustomAgent(value, index) {
     sessionResetText: boundedString(value.sessionResetText, '', 120),
     weeklyResetText: boundedString(value.weeklyResetText, '', 120),
     activityProcess: boundedString(value.activityProcess || legacyActivityProcess, '', 260),
+    // Slash-normalised cmdline/path substring; matched in JS only (never shell-interpolated).
+    activityFingerprint: boundedString(value.activityFingerprint, '', 512),
     command
   };
 }
