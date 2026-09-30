@@ -1,7 +1,7 @@
 {
   "name": "agent-notch",
   "version": "1.4.2",
-  "description": "Ambient right-edge desktop HUD for live AI coding-agent quotas. Windows-first, standalone, optional MindSync glow.",
+  "description": "A fuel gauge for your AI coding limits. Live quota for Claude Code, Codex, Gemini, Cursor, Grok and OpenCode on the edge of your screen.",
   "main": "electron/main.js",
   "bin": {
     "notch": "./bin/cli.js",
