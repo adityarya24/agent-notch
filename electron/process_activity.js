@@ -121,7 +121,13 @@ function sampleAgentProcesses(extraNames = [], platform = process.platform) {
       .map(normalizeProcessName)
       .filter((name) => /^[a-z0-9._-]{1,80}$/.test(name));
     const literals = names.map((name) => `'${name}'`).join(',');
-    const command = `Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -in @(${literals}) } | Select-Object ProcessName,Id,CPU | ConvertTo-Json -Compress`;
+    // cursor-agent ships as node.exe under %LOCALAPPDATA%\cursor-agent, so it
+    // never shows up by process name; match it by install path instead.
+    const command = [
+      `$a = @(Get-Process -ErrorAction SilentlyContinue | Where-Object { $_.ProcessName -in @(${literals}) } | Select-Object ProcessName,Id,CPU)`,
+      "$b = @(Get-Process -Name node -ErrorAction SilentlyContinue | Where-Object { $_.Path -match '\\\\cursor-agent\\\\' } | Select-Object @{n='ProcessName';e={'cursor-agent'}},Id,CPU)",
+      '@($a + $b) | ConvertTo-Json -Compress'
+    ].join('; ');
     return execSamples('powershell.exe', ['-NoLogo', '-NoProfile', '-NonInteractive', '-Command', command], parseWindowsSamples);
   }
   return execSamples('ps', ['-A', '-o', 'pid=,comm=,time='], parseUnixSamples);
