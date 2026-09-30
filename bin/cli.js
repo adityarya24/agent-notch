@@ -17,6 +17,7 @@ const {
 } = require('../electron/provider-registry');
 const { readQuotaCache } = require('../electron/quota-cache');
 const { buildQuotaDump } = require('../electron/quota-dump');
+const platform = require('../electron/platform');
 
 const rootDir = path.resolve(__dirname, '..');
 const distIndex = path.join(rootDir, 'dist', 'index.html');
@@ -28,22 +29,10 @@ const smokeScript = path.join(rootDir, 'scripts', 'smoke-glow.js');
 const args = process.argv.slice(2);
 const command = args[0] || 'start';
 
-function resolveElectron() {
-  try {
-    const fromPkg = require('electron');
-    if (typeof fromPkg === 'string' && fs.existsSync(fromPkg)) return fromPkg;
-  } catch (e) {}
-  const win = path.join(rootDir, 'node_modules', 'electron', 'dist', 'electron.exe');
-  if (fs.existsSync(win)) return win;
-  const nix = path.join(rootDir, 'node_modules', 'electron', 'dist', 'electron');
-  if (fs.existsSync(nix)) return nix;
-  return win;
-}
-
 let cachedElectronPath = null;
 
 function getElectronPath() {
-  if (!cachedElectronPath) cachedElectronPath = resolveElectron();
+  if (!cachedElectronPath) cachedElectronPath = platform.electronBinary(process.platform, rootDir);
   return cachedElectronPath;
 }
 
@@ -57,29 +46,11 @@ function readLegacyPid() {
 }
 
 function isPidAlive(pid) {
-  try {
-    process.kill(pid, 0);
-    return true;
-  } catch (e) {
-    return false;
-  }
-}
-
-function windowsProcessCommandLine(pid) {
-  if (process.platform !== 'win32') return '';
-  const script = "(Get-CimInstance Win32_Process -Filter ('ProcessId = ' + $env:NOTCH_PID)).CommandLine";
-  const result = spawnSync('powershell.exe', ['-NoProfile', '-NonInteractive', '-Command', script], {
-    encoding: 'utf8',
-    windowsHide: true,
-    env: { ...process.env, NOTCH_PID: String(pid) }
-  });
-  return String(result.stdout || '').trim();
+  return platform.isPidAlive(pid);
 }
 
 function isOwnedPid(pid) {
-  if (!pid || !isPidAlive(pid)) return false;
-  if (process.platform !== 'win32') return true;
-  return windowsProcessCommandLine(pid).toLowerCase().includes(mainJs.toLowerCase());
+  return platform.isOwnedPid(pid, process.platform, { mainNeedle: mainJs });
 }
 
 function discoverWindowsPid() {
@@ -104,7 +75,9 @@ function findRunningPid() {
   if (isOwnedPid(runtimePid)) return runtimePid;
   const legacyPid = readLegacyPid();
   if (isOwnedPid(legacyPid)) return legacyPid;
-  return discoverWindowsPid();
+  // Windows-only process scan; other platforms rely on the pid file.
+  if (process.platform === 'win32') return discoverWindowsPid();
+  return null;
 }
 
 function isRunning() {
@@ -168,10 +141,8 @@ function waitUntilRunning(ms = 4000) {
 function stopNotch() {
   const pid = findRunningPid();
   if (pid && isPidAlive(pid)) {
-    const result = process.platform === 'win32'
-      ? spawnSync('taskkill.exe', ['/PID', String(pid), '/T', '/F'], { stdio: 'ignore', windowsHide: true })
-      : spawnSync('kill', [String(pid)], { stdio: 'ignore' });
-    if (result.status === 0 || !isPidAlive(pid)) {
+    const result = platform.killPid(pid, process.platform);
+    if (result.ok || !isPidAlive(pid)) {
       clearRuntimePid(pid);
       clearLegacyPid(pid);
       console.log('Agent Notch stopped.');
@@ -218,6 +189,10 @@ function vbsQuote(value) {
 }
 
 function enableAutostart() {
+  if (!platform.supportsCliAutostart(process.platform)) {
+    console.log(platform.cliAutostartUnsupportedMessage(process.platform));
+    return;
+  }
   try {
     const electronPath = getElectronPath();
     const startupVbs = startupVbsPath();
@@ -236,6 +211,10 @@ function enableAutostart() {
 }
 
 function disableAutostart() {
+  if (!platform.supportsCliAutostart(process.platform)) {
+    console.log(platform.cliAutostartUnsupportedMessage(process.platform));
+    return;
+  }
   try {
     const startupVbs = startupVbsPath();
     if (fs.existsSync(startupVbs)) {
@@ -411,7 +390,7 @@ Commands:
   notch status          Running or not
   notch quota           Print the last quota snapshot as JSON (no HUD, no live scrape)
   notch --json          Alias for notch quota
-  notch autostart       Launch at Windows logon
+  notch autostart       ${process.platform === 'win32' ? 'Launch at Windows logon' : process.platform === 'darwin' ? 'Open at Login (CLI: not yet — use tray)' : 'Launch at logon (Windows CLI only for now)'}
   notch disable-startup Remove logon launch
   notch smoke           Glow demo on the live HUD (no quota burn)
   notch smoke --clear   Remove leftover smoke jobs

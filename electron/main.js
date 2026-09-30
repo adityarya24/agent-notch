@@ -11,6 +11,7 @@ const { runtimePath, ensureRuntimeDir, writePid, clearPid } = require('./runtime
 const { activityFingerprint, quotaFingerprint, keepLastKnown, formatProviderDebug } = require('./quota-state');
 const { PERSISTED_QUOTA_TTL_MS, readQuotaCache, writeQuotaCache } = require('./quota-cache');
 const { OVERLAY, overlayBounds } = require('./overlay-geometry');
+const { openAtLoginLabel } = require('./platform');
 
 let mainWindow = null;
 let tray = null;
@@ -328,7 +329,7 @@ function createTray() {
       }
     },
     {
-      label: 'Start with Windows',
+      label: openAtLoginLabel(process.platform),
       type: 'checkbox',
       checked: app.getLoginItemSettings().openAtLogin,
       click: (menuItem) => {

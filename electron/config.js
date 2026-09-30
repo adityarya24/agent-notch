@@ -1,7 +1,7 @@
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
 const { sanitizeModelOrder } = require('./model-order');
+const { appDataRoot } = require('./platform');
 
 const BUILTIN_IDS = ['codex', 'claude', 'gemini', 'cursor', 'opencode', 'grok'];
 const DEFAULT_CONFIG = Object.freeze({
@@ -16,13 +16,6 @@ const QUOTA_SOURCES = new Set(['unknown', 'manual', 'command']);
 // Must stay in step with ICON_OPTIONS in src/components/SettingsModal.jsx -- an icon
 // the picker offers but this set omits is silently rewritten to 'spark' on save.
 const ICONS = new Set(['spark', 'claude', 'codex', 'gemini', 'antigravity', 'cursor', 'grok', 'opencode']);
-
-function appDataRoot() {
-  const override = String(process.env.NOTCH_CONFIG_DIR || '').trim();
-  if (override) return path.resolve(override);
-  const appData = String(process.env.APPDATA || '').trim();
-  return appData ? path.join(appData, 'Agent Notch') : path.join(os.homedir(), '.agent-notch');
-}
 
 function configPath() {
   return path.join(appDataRoot(), 'config.json');

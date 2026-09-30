@@ -1,13 +1,6 @@
 const fs = require('fs');
-const os = require('os');
 const path = require('path');
-
-function runtimeDir() {
-  const override = String(process.env.NOTCH_STATE_DIR || '').trim();
-  if (override) return path.resolve(override);
-  const local = String(process.env.LOCALAPPDATA || process.env.APPDATA || '').trim();
-  return local ? path.join(local, 'Agent Notch') : path.join(os.homedir(), '.agent-notch');
-}
+const { runtimeDir } = require('./platform');
 
 function runtimePath(name) {
   return path.join(runtimeDir(), name);
