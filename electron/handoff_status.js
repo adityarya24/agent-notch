@@ -15,6 +15,7 @@ function ringIdForAgent(name) {
   const id = String(name || '').trim().toLowerCase();
   if (!id) return null;
   if (id === 'agy') return 'gemini';
+  if (id === 'codex-orchestrator') return 'codex';
   if (RING_IDS.has(id)) return id;
   return null;
 }
@@ -95,7 +96,9 @@ function lastHandoff(meta) {
   const to = last.to ? String(last.to) : '';
   if (!from || !to) return null;
   const why = humanReason(last.reason);
-  const line = why ? `${from} → ${to} (${why})` : `${from} → ${to}`;
+  const fromLabel = ringIdForAgent(from) || from;
+  const toLabel = ringIdForAgent(to) || to;
+  const line = why ? `${fromLabel} → ${toLabel} (${why})` : `${fromLabel} → ${toLabel}`;
   return {
     from,
     to,
