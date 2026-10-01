@@ -1,7 +1,8 @@
-const { app, BrowserWindow, screen, ipcMain, Tray, Menu, globalShortcut, nativeImage, session, Notification } = require('electron');
+const { app, BrowserWindow, screen, ipcMain, Tray, Menu, globalShortcut, nativeImage, session, Notification, shell } = require('electron');
 const path = require('path');
 const { pathToFileURL } = require('url');
 const fs = require('fs');
+const { execFile } = require('child_process');
 const { getAllInstalledAgentUsage, getLocalConfig, saveLocalConfig, probeCli, suggestCustomClis } = require('./scrapers');
 const { readJobActivity } = require('./handoff_status');
 const { evaluateQuotaAlerts, formatAlertBody } = require('./alert-notify');
@@ -471,8 +472,47 @@ async function runCaptureIfRequested() {
   if (process.env.NOTCH_CAPTURE_QUIT === '1') app.quit();
 }
 
+/**
+ * Windows shows a notification under the name and icon of the Start Menu
+ * shortcut that carries the app's AppUserModelID. Without one, toasts say
+ * "Electron" with a blank icon. Create or refresh ours on every start, so it
+ * also follows the install if it moves.
+ */
+function ensureWindowsShortcut() {
+  if (process.platform !== 'win32' || !process.env.APPDATA) return;
+  try {
+    const link = path.join(process.env.APPDATA, 'Microsoft', 'Windows', 'Start Menu', 'Programs', 'Agent Notch.lnk');
+    const options = {
+      target: process.execPath,
+      args: app.isPackaged ? '' : `"${app.getAppPath()}"`,
+      cwd: app.getAppPath(),
+      description: 'Agent Notch: live quota for your AI coding agents',
+      icon: path.join(__dirname, 'app_icon.ico'),
+      iconIndex: 0,
+      appUserModelId: APP_USER_MODEL_ID
+    };
+    shell.writeShortcutLink(link, fs.existsSync(link) ? 'replace' : 'create', options);
+  } catch (err) {
+    console.warn('[agent-notch] Start Menu shortcut skipped:', err && err.message);
+  }
+  // Windows caches the first name it saw for an AppUserModelID (Electron's own
+  // "Electron" shortcut). Registering the ID's display name and icon makes the
+  // notification header say "Agent Notch" with our icon regardless.
+  const key = `HKCU\\Software\\Classes\\AppUserModelId\\${APP_USER_MODEL_ID}`;
+  const values = [
+    ['DisplayName', 'Agent Notch'],
+    ['IconUri', path.join(__dirname, 'app_icon.png')]
+  ];
+  for (const [name, data] of values) {
+    execFile('reg', ['add', key, '/v', name, '/t', 'REG_EXPAND_SZ', '/d', data, '/f'], { windowsHide: true }, (err) => {
+      if (err) console.warn(`[agent-notch] could not register ${name}:`, err.message);
+    });
+  }
+}
+
 if (gotTheLock) app.whenReady().then(() => {
   app.setAppUserModelId(APP_USER_MODEL_ID);
+  ensureWindowsShortcut();
   try {
     ensureRuntimeDir();
     const persisted = readQuotaCache(quotaCacheFile);
