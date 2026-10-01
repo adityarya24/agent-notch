@@ -44,7 +44,7 @@
     "smoke": "node scripts/smoke-glow.js --hud",
     "smoke:logic": "node scripts/smoke-glow.js",
     "smoke:glow": "node scripts/smoke-glow.js --hud",
-    "media:make": "node scripts/make-product-media.js"
+    "media:make": "node tools/media/make-product-media.js"
   },
   "keywords": [
     "ai-agent",

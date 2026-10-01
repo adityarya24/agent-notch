@@ -3,7 +3,7 @@ const fs = require('fs');
 const path = require('path');
 const { spawnSync } = require('child_process');
 
-const root = path.resolve(__dirname, '..');
+const root = path.resolve(__dirname, '..', '..');
 const stamp = new Date().toISOString().replace(/[:.]/g, '-');
 const out = path.resolve(process.argv[2] || path.join(root, 'output', 'product-media', stamp));
 if (fs.existsSync(out) && fs.readdirSync(out).length) {

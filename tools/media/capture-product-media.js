@@ -4,7 +4,7 @@ const { app, BrowserWindow } = require('electron');
 const fs = require('fs');
 const path = require('path');
 
-const root = path.resolve(__dirname, '..');
+const root = path.resolve(__dirname, '..', '..');
 const output = path.resolve(process.argv[2] || path.join(root, 'output', 'product-media'));
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
