@@ -1,0 +1,40 @@
+name: Report a bug
+description: Something in Agent Notch (Free or Pro) isn't working.
+labels: ["bug"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        **Never paste your license key here.** Issues are public. For licence or payment questions, email adityaryawork@gmail.com instead.
+  - type: textarea
+    id: what
+    attributes:
+      label: What happened, and what did you expect?
+    validations:
+      required: true
+  - type: textarea
+    id: steps
+    attributes:
+      label: Steps to make it happen again
+  - type: input
+    id: version
+    attributes:
+      label: Agent Notch version
+      description: Shown at the bottom of Settings, e.g. "Agent Notch Pro 1.5.2"
+    validations:
+      required: true
+  - type: input
+    id: os
+    attributes:
+      label: OS and version
+      placeholder: Windows 11 23H2
+  - type: input
+    id: agents
+    attributes:
+      label: Which agents are involved?
+      placeholder: Claude Code, Codex, Gemini...
+  - type: textarea
+    id: screenshot
+    attributes:
+      label: Screenshot (optional)
+      description: Drag an image here. Check it shows no key or email first.

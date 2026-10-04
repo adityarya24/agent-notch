@@ -1,0 +1,34 @@
+name: Request a provider
+description: Ask for an AI coding agent the notch doesn't show yet.
+title: "Provider request: "
+labels: ["provider-request"]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks! Requests with the most 👍 get built first, so if someone already asked for your agent, add a 👍 there instead.
+  - type: input
+    id: agent
+    attributes:
+      label: Which agent?
+      description: Name and link, e.g. Aider (https://aider.chat)
+    validations:
+      required: true
+  - type: textarea
+    id: quota
+    attributes:
+      label: Where does it show your usage or limits?
+      description: A command, a settings page, a usage dashboard, a local file. Anything you know helps.
+  - type: checkboxes
+    id: signals
+    attributes:
+      label: What would you want from the notch?
+      options:
+        - label: Quota ring (how much of my limit is used)
+        - label: 'Waiting on you alert, when it asks a question or needs approval'
+        - label: 'Done alert, when it finishes'
+  - type: dropdown
+    id: os
+    attributes:
+      label: Your OS
+      options: [Windows, macOS, Linux]
