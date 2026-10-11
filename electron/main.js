@@ -15,6 +15,9 @@ const { PERSISTED_QUOTA_TTL_MS, readQuotaCache, writeQuotaCache } = require('./q
 const { OVERLAY, overlayBounds } = require('./overlay-geometry');
 const { openAtLoginLabel } = require('./platform');
 
+// A fixed URL, never one from the renderer, so the HUD can't be used to open arbitrary links.
+const PRO_URL = 'https://yuvaanlabs.com/agent-notch/?ref=notch-free#pricing';
+
 let mainWindow = null;
 let tray = null;
 let pollInterval = null;
@@ -344,6 +347,11 @@ function createTray() {
     },
     { type: 'separator' },
     {
+      label: 'Get Agent Notch Pro…',
+      click: () => shell.openExternal(PRO_URL)
+    },
+    { type: 'separator' },
+    {
       label: 'Quit Agent Notch',
       click: () => {
         app.quit();
@@ -415,6 +423,8 @@ ipcMain.handle('set-overlay-mode', (_event, mode) => {
 });
 
 ipcMain.handle('probe-cli', (_event, bin) => probeCli(bin));
+
+ipcMain.handle('open-pro-page', () => shell.openExternal(PRO_URL));
 
 ipcMain.handle('suggest-custom-clis', () => {
   const config = getLocalConfig();

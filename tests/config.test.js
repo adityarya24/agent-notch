@@ -87,6 +87,11 @@ test('tuck notifications default on and can be switched off', () => {
   assert.equal(config.sanitizeConfig({ notifyWhenTucked: 1 }).notifyWhenTucked, true);
 });
 
+test('Pro tips default on and can be switched off', () => {
+  assert.equal(config.sanitizeConfig({}).showProTips, true);
+  assert.equal(config.sanitizeConfig({ showProTips: false }).showProTips, false);
+});
+
 test('modelOrder keeps known ids, drops junk, and dedupes', () => {
   const result = config.sanitizeConfig({
     modelOrder: ['grok', 'codex', 'grok', 'nope', 12, 'custom_ok'],

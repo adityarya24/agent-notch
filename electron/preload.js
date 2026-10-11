@@ -12,6 +12,7 @@ contextBridge.exposeInMainWorld('agentNotchAPI', {
   setOverlayMode: (mode) => ipcRenderer.invoke('set-overlay-mode', mode),
   probeCli: (bin) => ipcRenderer.invoke('probe-cli', bin),
   suggestCustomClis: () => ipcRenderer.invoke('suggest-custom-clis'),
+  openProPage: () => ipcRenderer.invoke('open-pro-page'),
   onUsageUpdated: (callback) => {
     const subscription = (_event, data) => callback(data);
     ipcRenderer.on('usage-updated', subscription);

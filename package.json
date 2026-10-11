@@ -1,6 +1,6 @@
 {
   "name": "agent-notch",
-  "version": "1.4.2",
+  "version": "1.4.3",
   "description": "A fuel gauge for your AI coding limits. Live quota for Claude Code, Codex, Gemini, Cursor, Grok and OpenCode on the edge of your screen.",
   "main": "electron/main.js",
   "bin": {

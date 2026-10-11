@@ -46,6 +46,9 @@ export function SettingsModal({ isOpen, onClose, config, allDetectedIds, onSaveC
   const [customAgents, setCustomAgents] = useState(Array.isArray(config?.customAgents) ? config.customAgents : []);
   const [reduceMotion, setReduceMotion] = useState(Boolean(config?.reduceMotion));
   const [notifyWhenTucked, setNotifyWhenTucked] = useState(config?.notifyWhenTucked !== false);
+  const [showProTips, setShowProTips] = useState(config?.showProTips !== false);
+  // Pro shares this file via upstream merges; only the free build advertises Pro.
+  const isFreeBuild = typeof window === 'undefined' || !window.agentNotchAPI?.focusAgentTerminal;
   const [alertThreshold, setAlertThreshold] = useState(String(Number(config?.alertThreshold) || 80));
   const [showAdd, setShowAdd] = useState(false);
   const [draft, setDraft] = useState(emptyDraft());
@@ -97,6 +100,7 @@ export function SettingsModal({ isOpen, onClose, config, allDetectedIds, onSaveC
       customAgents: nextCustom || customAgents,
       reduceMotion,
       notifyWhenTucked,
+      showProTips,
       alertThreshold: normalizedThreshold()
     });
   };
@@ -412,6 +416,42 @@ export function SettingsModal({ isOpen, onClose, config, allDetectedIds, onSaveC
             {notifyWhenTucked ? 'on' : 'off'}
           </span>
         </button>
+        {isFreeBuild ? (
+        <button
+          type="button"
+          onClick={() => {
+            const next = !showProTips;
+            setShowProTips(next);
+            onSaveConfig({
+              ...config,
+              enabledModels: enabledMap,
+              customAgents,
+              reduceMotion,
+              notifyWhenTucked,
+              showProTips: next,
+              alertThreshold: normalizedThreshold()
+            });
+          }}
+          className="flex items-center justify-between px-1 py-0.5 text-[10px] text-neutral-400"
+        >
+          <span>Pro tips</span>
+          <span className={`px-1.5 py-0.5 rounded ${showProTips ? 'bg-emerald-500/20 text-emerald-300' : 'bg-white/10 text-neutral-500'}`}>
+            {showProTips ? 'on' : 'off'}
+          </span>
+        </button>
+        ) : null}
+        {isFreeBuild && showProTips ? (
+          <div className="flex items-center justify-between gap-2 rounded-lg border border-white/10 bg-white/[0.03] px-2 py-1.5 text-[10px] leading-snug text-neutral-400">
+          <span>Pro: jump to an agent's terminal, plus alerts when it needs you or finishes.</span>
+          <button
+            type="button"
+            onClick={() => window.agentNotchAPI?.openProPage?.()}
+            className="shrink-0 rounded-md bg-white/10 px-2 py-0.5 font-semibold text-neutral-200 hover:bg-white/20"
+          >
+            Get Pro
+          </button>
+          </div>
+        ) : null}
         <button
           onClick={handleSave}
           className="w-full py-2 px-3 bg-emerald-500 hover:bg-emerald-600 active:scale-[0.98] text-[#052e1c] font-semibold rounded-xl text-xs flex items-center justify-center gap-1.5 transition-all shadow-lg shadow-emerald-500/20"

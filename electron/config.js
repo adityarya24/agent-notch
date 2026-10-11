@@ -10,7 +10,8 @@ const DEFAULT_CONFIG = Object.freeze({
   alertThreshold: 80,
   reduceMotion: false,
   collapsed: false,
-  notifyWhenTucked: true
+  notifyWhenTucked: true,
+  showProTips: true
 });
 const QUOTA_SOURCES = new Set(['unknown', 'manual', 'command']);
 // Must stay in step with ICON_OPTIONS in src/components/SettingsModal.jsx -- an icon
@@ -90,6 +91,7 @@ function sanitizeConfig(value) {
     reduceMotion: Boolean(source.reduceMotion),
     collapsed: Boolean(source.collapsed),
     notifyWhenTucked: source.notifyWhenTucked === undefined ? true : Boolean(source.notifyWhenTucked),
+    showProTips: source.showProTips === undefined ? true : Boolean(source.showProTips),
     modelOrder: sanitizeModelOrder(source.modelOrder, allowedIds)
   };
 }

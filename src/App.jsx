@@ -113,6 +113,8 @@ export default function App() {
   const [draggingId, setDraggingId] = useState(null);
   const [quotaAlert, setQuotaAlert] = useState(null);
   const hoverTimer = useRef(null);
+  const lastDragEndAt = useRef(0);
+  const [proTipClickedId, setProTipClickedId] = useState(null);
 
   useEffect(() => {
     if (window.agentNotchAPI?.getConfig) {
@@ -293,6 +295,7 @@ export default function App() {
       const order = draftOrderRef.current;
       dragRef.current = { id: null, startY: 0, active: false };
       setDraggingId(null);
+      if (drag.active) lastDragEndAt.current = Date.now();
       if (drag.active && order && order.length) {
         Promise.resolve(saveRef.current({ ...(configRef.current || {}), modelOrder: order })).finally(() => {
           draftOrderRef.current = null;
@@ -328,6 +331,7 @@ export default function App() {
   const scheduleHover = (id) => {
     if (isCollapsed || isSettingsOpen || draggingId) return;
     clearTimeout(hoverTimer.current);
+    if (proTipClickedId && proTipClickedId !== id) setProTipClickedId(null);
     if (reduceMotion) {
       setHoveredModelId(id);
       return;
@@ -336,8 +340,25 @@ export default function App() {
   };
   const scheduleLeave = () => {
     clearTimeout(hoverTimer.current);
-    hoverTimer.current = setTimeout(() => setHoveredModelId(null), reduceMotion ? 0 : 80);
+    // Long enough to cross the gap into the card, so its Get Pro button is reachable.
+    hoverTimer.current = setTimeout(() => {
+      setHoveredModelId(null);
+      setProTipClickedId(null);
+    }, reduceMotion ? 120 : 200);
   };
+  const keepHover = () => clearTimeout(hoverTimer.current);
+  // Pro merges this file from upstream; its preload has focusAgentTerminal, so Pro never shows these.
+  const isFreeBuild = !window.agentNotchAPI?.focusAgentTerminal;
+  const showProTips = isFreeBuild && data.config?.showProTips !== false;
+  const handleRingClick = (id) => {
+    // A drag-to-reorder also ends in a click; that one isn't a request to jump.
+    if (Date.now() - lastDragEndAt.current < 300) return;
+    if (!showProTips || isCollapsed || isSettingsOpen) return;
+    clearTimeout(hoverTimer.current);
+    setHoveredModelId(id);
+    setProTipClickedId(id);
+  };
+  const openProPage = () => window.agentNotchAPI?.openProPage?.();
 
   const getModelIcon = (iconName) => {
     switch (iconName) {
@@ -433,6 +454,10 @@ export default function App() {
             <ModelPopoverCard
               model={hoveredModel}
               jobActivity={job}
+              proTip={!showProTips ? 'off' : (proTipClickedId === hoveredModel.id ? 'clicked' : 'hint')}
+              onGetPro={openProPage}
+              onMouseEnter={keepHover}
+              onMouseLeave={scheduleLeave}
             />
           )
         )}
@@ -529,6 +554,7 @@ export default function App() {
                   dragRef.current = { id: m.id, startY: event.clientY, active: false };
                 }}
                 onMouseEnter={() => scheduleHover(m.id)}
+                onClick={() => handleRingClick(m.id)}
               >
                 <CircularProgressRing
                   size={38}

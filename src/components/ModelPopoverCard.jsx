@@ -48,7 +48,7 @@ function QuotaRow({ label, percent, resetText, state, authState, stale, alertThr
   );
 }
 
-export function ModelPopoverCard({ model, jobActivity }) {
+export function ModelPopoverCard({ model, jobActivity, proTip = 'off', onGetPro, onMouseEnter, onMouseLeave }) {
   if (!model) return null;
 
   const state = model.quotaState || (model.quotaKnown ? 'known' : 'unknown');
@@ -62,7 +62,12 @@ export function ModelPopoverCard({ model, jobActivity }) {
     : '';
 
   return (
-    <div className="w-[280px] notch-glass rounded-2xl p-4 text-white notch-enter">
+    <div
+      data-hud
+      className="w-[280px] notch-glass rounded-2xl p-4 text-white notch-enter"
+      onMouseEnter={onMouseEnter}
+      onMouseLeave={onMouseLeave}
+    >
       <div className="flex items-center justify-between gap-2 mb-3">
         <div className="flex items-center gap-2">
           <span className="font-semibold text-sm tracking-tight text-white">{model.name}</span>
@@ -110,6 +115,32 @@ export function ModelPopoverCard({ model, jobActivity }) {
         <div className="w-full mt-2 py-1.5 px-3 bg-emerald-500/10 border border-emerald-500/25 rounded-lg flex items-center gap-2 text-[11px] text-emerald-300 font-medium leading-snug">
           <ArrowRight className="w-3.5 h-3.5 shrink-0" />
           <span>{routingLine}</span>
+        </div>
+      ) : null}
+
+      {proTip !== 'off' ? (
+        // The free build has no click-to-jump, so a click on a ring is the moment a
+        // user shows they want it. Say so there, once, instead of nagging elsewhere.
+        <div
+          className={`mt-2 flex items-center justify-between gap-2 rounded-lg px-2.5 py-1.5 text-[10.5px] leading-snug ${
+            proTip === 'clicked'
+              ? 'border border-amber-400/30 bg-amber-400/10 text-amber-200'
+              : 'text-neutral-500'
+          }`}
+        >
+          <span>
+            {proTip === 'clicked'
+              ? 'Click to jump to this terminal is in Pro.'
+              : 'Pro: click a ring to jump to its terminal.'}
+          </span>
+          <button
+            data-hud
+            type="button"
+            onClick={onGetPro}
+            className="shrink-0 rounded-md bg-white/10 px-2 py-0.5 font-semibold text-neutral-200 hover:bg-white/20"
+          >
+            Get Pro
+          </button>
         </div>
       ) : null}
     </div>

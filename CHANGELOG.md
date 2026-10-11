@@ -4,6 +4,19 @@ All notable changes to Agent Notch are documented here.
 
 ## [Unreleased]
 
+## [1.4.3] - 2026-10-12
+
+### Added
+
+- The free build now says Pro exists, in three quiet places and nowhere else.
+  The hover card ends with a one-line hint ("Pro: click a ring to jump to its
+  terminal") and a Get Pro button; clicking a ring, which does nothing in the
+  free build, turns that hint amber. The tray has "Get Agent Notch Pro…", and
+  Settings has a short Pro note. No popups and no timers.
+- Settings → "Pro tips" turns all of it off, including the Settings note.
+- The hover card stays open while the pointer crosses from the ring into it, so
+  its buttons can be clicked.
+
 ## [1.4.2] - 2026-09-27
 
 ### Added
