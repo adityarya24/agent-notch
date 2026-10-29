@@ -62,7 +62,7 @@
     "@tailwindcss/vite": "^4.3.3",
     "@vitejs/plugin-react": "^4.3.4",
     "clsx": "^2.1.1",
-    "electron": "44.0.0",
+    "electron": "44.10.0",
     "lucide-react": "^1.16.0",
     "react": "^19.1.0",
     "react-dom": "^19.1.0",
