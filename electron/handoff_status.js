@@ -4,11 +4,17 @@ const os = require('os');
 
 const RING_IDS = new Set(['codex', 'claude', 'gemini', 'cursor', 'opencode', 'grok']);
 
+// MindSync was renamed Hivelane: new installs keep jobs in ~/.hivelane, older
+// ones in ~/.mindsync. Prefer whichever actually has a dispatch folder.
 function dispatchRoot() {
   const override = (process.env.AGENT_DISPATCH_HOME || '').trim();
   if (override) return override;
-  const home = (process.env.MINDSYNC_HOME || '').trim() || path.join(os.homedir(), '.mindsync');
-  return path.join(home, 'dispatch');
+  const envHome = (process.env.HIVELANE_HOME || '').trim() || (process.env.MINDSYNC_HOME || '').trim();
+  if (envHome) return path.join(envHome, 'dispatch');
+  const hivelane = path.join(os.homedir(), '.hivelane', 'dispatch');
+  const mindsync = path.join(os.homedir(), '.mindsync', 'dispatch');
+  if (!fs.existsSync(hivelane) && fs.existsSync(mindsync)) return mindsync;
+  return hivelane;
 }
 
 function ringIdForAgent(name) {
