@@ -57,6 +57,17 @@
 
 ---
 
+## 🔐 Privacy & Credentials
+
+- **Notch stores no provider tokens.** It reads each CLI's own sign-in files where they already are (Claude Code, Codex, Cursor, Grok, Antigravity, OpenCode) and does not copy, rewrite or refresh them. An expired session asks you to sign in again through that CLI.
+- **Each token goes only to its own provider.** A Claude token goes only to Anthropic's usage endpoint, a Cursor token only to Cursor, and so on. The optional Google token refresh is kept in memory only.
+- **Nothing is sent to us.** No telemetry, no analytics, no tracking backend. Session and transcript contents are never read for display or sent anywhere.
+- **Notch's own files hold no secrets.** Settings live in `%APPDATA%\Agent Notch\config.json`; the quota cache and `notch quota` output never contain tokens.
+
+Details: [SECURITY.md](SECURITY.md).
+
+---
+
 ## 📊 Supported Providers & Quota Adapters
 
 Agent Notch detects and tracks live usage for major coding agent ecosystems directly from local session vaults. **Live percentages only exist where a grounded reader exists.** Suggested apps get an icon and activity glow on opt-in; they do not get invented quota.
