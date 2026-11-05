@@ -22,7 +22,7 @@
 
 <p align="center">
   <em>Codex runs out. The job moves to Antigravity, and the toast says why — in the colour of wherever it landed.<br>
-  The dispatch behind it is <a href="https://github.com/adityarya24/mindsync-ai"><strong>MindSync</strong></a> — Notch shows the orchestration, MindSync does it.</em>
+  The dispatch behind it is <a href="https://yuvaanlabs.com/hivelane/"><strong>Hivelane</strong></a> (formerly MindSync) — Notch shows the orchestration, Hivelane does it.</em>
 </p>
 
 <p align="center">
@@ -124,16 +124,16 @@ Catalog suggestions (detection-only, never silent-add): **Aider, GitHub Copilot,
 
 ---
 
-## 🔄 Optional: MindSync Multi-Agent Integration
+## 🔄 Optional: Hivelane Multi-Agent Integration
 
 > [!TIP]
-> **Agent Notch works 100% standalone.** You do **not** need MindSync to monitor quotas.
+> **Agent Notch works 100% standalone.** You do **not** need Hivelane to monitor quotas.
 
-If you also use [**MindSync**](https://github.com/adityarya24/mindsync-ai) for multi-agent task dispatch and automated failover across local and VPS agents, Notch automatically surfaces live orchestration status:
+If you also use [**Hivelane**](https://yuvaanlabs.com/hivelane/) (formerly MindSync) for multi-agent task dispatch and automated failover across local and VPS agents, Notch automatically surfaces live orchestration status:
 
-- **Dispatch-Aware Glow**: A running MindSync job keeps its assigned agent ring active alongside any directly observed local CLI sessions.
-- **One-Shot Handoff Flash**: When MindSync transitions a task between agents (e.g. `codex → grok (quota exhausted)`), a non-intrusive 2–3s banner plays once and quietly settles.
-- **Pure Spectator**: Notch never touches job execution, task transfers, or dispatch — it purely reflects live state from `~/.mindsync/dispatch/jobs/`.
+- **Dispatch-Aware Glow**: A running Hivelane job keeps its assigned agent ring active alongside any directly observed local CLI sessions.
+- **One-Shot Handoff Flash**: When Hivelane transitions a task between agents (e.g. `codex → grok (quota exhausted)`), a non-intrusive 2–3s banner plays once and quietly settles.
+- **Pure Spectator**: Notch never touches job execution, task transfers, or dispatch — it purely reflects live state from `~/.hivelane/dispatch/jobs/` (or `~/.mindsync/dispatch/jobs/` on older installs).
 
 ---
 
@@ -270,10 +270,10 @@ Quota scraping works out-of-the-box using local credentials. If automatic OAuth 
    ```
 2. Configure your Google OAuth credentials:
    ```env
-   MINDSYNC_ANTIGRAVITY_CLIENT_ID="your-client-id.apps.googleusercontent.com"
-   MINDSYNC_ANTIGRAVITY_CLIENT_SECRET="your-client-secret"
+   NOTCH_ANTIGRAVITY_CLIENT_ID="your-client-id.apps.googleusercontent.com"
+   NOTCH_ANTIGRAVITY_CLIENT_SECRET="your-client-secret"
    ```
-   *(Aliases `NOTCH_ANTIGRAVITY_CLIENT_ID` and `NOTCH_ANTIGRAVITY_CLIENT_SECRET` are also supported).*
+   *(The older `MINDSYNC_ANTIGRAVITY_CLIENT_ID` / `MINDSYNC_ANTIGRAVITY_CLIENT_SECRET` names still work.)*
 
 ### Motion Settings
 
@@ -315,20 +315,20 @@ Activity Process and JSON Quota Command are separate: the first is used only for
 - **Zero Interruption**: Frameless, transparent Electron overlay configured with OS-level click forwarding so your IDE, terminal, and browser interactions remain completely uninterrupted.
 - **Local-First Security**: Notch has no telemetry or tracking backend. Provider credentials are read locally and sent only to that provider's official usage, billing, or OAuth endpoint when needed to retrieve quota data.
 - **Credential Spectator Boundary**: Notch does not rewrite or refresh provider credential files. An expired Claude session asks you to sign in through Claude Code. Google token refresh, when explicitly configured, is held in memory.
-- **Activity Spectator Boundary**: Notch detects recent local CLI work from session-artifact timestamps plus dedicated-process name and CPU metadata. It never reads transcript contents for the glow, and none of this activity metadata is transmitted. MindSync metadata remains the source for dispatch glow and handoff flash.
+- **Activity Spectator Boundary**: Notch detects recent local CLI work from session-artifact timestamps plus dedicated-process name and CPU metadata. It never reads transcript contents for the glow, and none of this activity metadata is transmitted. Hivelane job metadata remains the source for dispatch glow and handoff flash.
 
 ---
 
 ## 🗺️ Upcoming (demand-driven)
 
-Windows is the supported host. No dates — these land if people actually ask:
+Windows is the supported host. No dates:
 
-- **macOS** — overlay + Login Item + Keychain / Cursor `Library` paths. Electron can show a window today; CLI, autostart, and several quota readers are still Windows-only.
+- **macOS** — planned and next in line; waiting on a Mac to test on. Electron can show a window today; CLI, autostart, and several quota readers are still Windows-only.
 - **Multi-monitor** — pick which display’s right edge.
 - **Packaged Windows installer** — NSIS / winget after the `npm i -g` path.
 - **Vertical slide** on the right edge so the dock can sit above or below other overlays.
 
-Not on the list: free-floating drag, fake desktop glass, or job transfer (that stays MindSync).
+Not on the list: free-floating drag, fake desktop glass, or job transfer (that stays in Hivelane).
 
 ---
 

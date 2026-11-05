@@ -1,6 +1,6 @@
 # Agent Notch — roadmap
 
-Right-edge HUD for live AI coding-agent quotas, plus a read-only view of MindSync job handoffs.
+Right-edge HUD for live AI coding-agent quotas, plus a read-only view of Hivelane (formerly MindSync) job handoffs.
 
 **Status (2026-09-01):** Source prepared for `v1.2.0`; latest published release remains `v1.1.0` until the release is cut. Compact four-ring HUD, drag-reorder, in-rail collapse, quota-color glow, safe last-known quota, and tucked threshold notifications. Mac / multi-monitor / packaged installer are demand-driven — see README Upcoming.
 
@@ -28,13 +28,13 @@ Account-level live % where the vendor exposes it. Provider name on the ring. Unk
 - [x] OpenCode Go — Go plan only.
 - [x] Custom CLI — PATH detect; JSON command or manual snapshot, plus exact native-process activity mapping.
 
-Notch does **not** transfer jobs. It displays the latest MindSync handoff (`from → to`) from `~/.mindsync/dispatch/jobs/*/meta.json`.
+Notch does **not** transfer jobs. It displays the latest Hivelane handoff (`from → to`) from `~/.hivelane/dispatch/jobs/*/meta.json` (or `~/.mindsync/...` on older installs).
 
 ---
 
-## Phase 3: MindSync visibility — in progress
+## Phase 3: Hivelane visibility (formerly MindSync) — in progress
 
-MindSync dispatch has preemptive readers and headroom ranking. Notch stays a spectator — it does not transfer jobs.
+Hivelane dispatch has preemptive readers and headroom ranking. Notch stays a spectator — it does not transfer jobs.
 
 - [x] Active-agent glow in the ring’s own quota color for direct local sessions, simultaneous agents, custom native executables, and MindSync jobs (no pip).
 - [x] Four-ring viewport, scroll for extras, drag-to-reorder.
@@ -66,4 +66,4 @@ MindSync dispatch has preemptive readers and headroom ranking. Notch stays a spe
 - Desktop: Electron (frameless overlay)
 - UI: React + Vite + Tailwind CSS v4
 - Quota readers: `electron/scrapers.js`
-- Handoff status: MindSync job metadata (display only)
+- Handoff status: Hivelane job metadata (display only)
